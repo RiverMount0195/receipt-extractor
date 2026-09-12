@@ -38,3 +38,7 @@ out/
 
 ### Worktrees ###
 .worktrees/
+
+### Secrets ###
+config/*
+!config/*.example

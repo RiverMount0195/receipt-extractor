@@ -1,10 +1,13 @@
 package com.tung.receipt_extractor.ocr;
 
+import com.tung.receipt_extractor.sheets.SheetRowAppender;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -16,10 +19,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@TestPropertySource(properties = "sheets.credentials-path=src/test/resources/sheets/test-sheets-credentials.properties")
 class OcrEndToEndTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private SheetRowAppender sheetRowAppender;
 
     @Test
     void extractsTextFromRealReceiptImageEndToEnd() throws Exception {

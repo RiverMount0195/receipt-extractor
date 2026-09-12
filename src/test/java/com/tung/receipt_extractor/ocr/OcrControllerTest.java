@@ -1,5 +1,6 @@
 package com.tung.receipt_extractor.ocr;
 
+import com.tung.receipt_extractor.sheets.SheetRowAppender;
 import net.sourceforge.tess4j.TesseractException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +10,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -22,6 +25,9 @@ class OcrControllerTest {
 
     @MockitoBean
     private OcrService ocrService;
+
+    @MockitoBean
+    private SheetRowAppender sheetRowAppender;
 
     @Test
     void returnsExtractedTextForValidImageUpload() throws Exception {
@@ -73,6 +79,33 @@ class OcrControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.bankSource").value("Techcombank"))
                 .andExpect(jsonPath("$.message").value("NGUYEN SON TUNG chuyen tien"));
+    }
+
+    @Test
+    void invokesSheetRowAppenderWithDetectedFields() throws Exception {
+        when(ocrService.extractText(any())).thenReturn(
+                "TECHCOMBANK\nChuyển thành công\nSố tiền: 50.000\nLời nhắn\nNGUYEN VAN A chuyen tien\nNgày thực hiện\n12 thg 9, 2026");
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "receipt.png", "image/png", "fake-image-bytes".getBytes());
+
+        mockMvc.perform(multipart("/api/ocr/extract").file(file))
+                .andExpect(status().isOk());
+
+        verify(sheetRowAppender).appendRow("Techcombank", 50000L, "NGUYEN VAN A chuyen tien");
+    }
+
+    @Test
+    void returns200EvenWhenSheetRowAppenderThrows() throws Exception {
+        when(ocrService.extractText(any())).thenReturn("Giao dịch thành công!\nVND 2,000");
+        doThrow(new RuntimeException("boom")).when(sheetRowAppender).appendRow(any(), any(), any());
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "receipt.png", "image/png", "fake-image-bytes".getBytes());
+
+        mockMvc.perform(multipart("/api/ocr/extract").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.amount").value(2000));
     }
 
     @Test
