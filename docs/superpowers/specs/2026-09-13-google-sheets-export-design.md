@@ -23,28 +23,41 @@ New package `com.tung.receipt_extractor.sheets`, parallel to the existing
 - **`SheetsConfig`** — a `@Configuration` class that builds a single `Sheets`
   API client bean at startup. Credentials are loaded via
   `UserCredentials.newBuilder()` (Google auth library) using a client ID,
-  client secret, and refresh token read from an external properties file
-  (see "Credentials file" below) — mirrors how `TesseractConfig` builds one
-  `ITesseract` bean from externalized config.
+  client secret, refresh token, and initial access token, all read from an
+  external properties file (see "Credentials file" below) — mirrors how
+  `TesseractConfig` builds one `ITesseract` bean from externalized config.
 - **`SheetRowAppender`** — one method,
   `appendRow(String bankSource, Long amount, String message)`. Builds a row
-  `[Instant.now(), bankSource, amount, message]` and calls
-  `Sheets.Spreadsheets.Values.append` against the configured spreadsheet ID
-  and sheet/tab name. Takes the `Sheets` client as a constructor dependency
-  (not a static/global), so it can be mocked in tests.
+  `[bankSource, amount, message, Instant.now()]` — matching the target
+  sheet's actual column order (Bank source, Amount, Message, Timestamp) —
+  and calls `Sheets.Spreadsheets.Values.append` against the configured
+  spreadsheet ID and sheet/tab name. Takes the `Sheets` client as a
+  constructor dependency (not a static/global), so it can be mocked in
+  tests.
 - No new response DTO — `OcrResponse` is unchanged.
 
 ## Credentials file
 
 Unlike `ocr.tessdata-path`/`ocr.languages` (non-secret, live in
-`application.properties`), Sheets credentials are secrets and must not be
+`application.properties`), everything needed to reach the Sheets API and
+identify the target spreadsheet is treated as secret and must not be
 committed:
 
 - A new file, `config/sheets-credentials.properties`, holds `client-id`,
-  `client-secret`, `refresh-token`, `spreadsheet-id`, and `sheet-name`.
+  `client-secret`, `refresh-token`, `access-token`, `spreadsheet-id`, and
+  `sheet-name`. `access-token` seeds `UserCredentials` with an initial token
+  (via `.setAccessToken(...)`) so it doesn't need an eager refresh call
+  before the first use; the library auto-refreshes using the refresh token
+  once that expires.
 - `config/` is added to `.gitignore`.
-- A checked-in `config/sheets-credentials.properties.example` template
-  (blank/placeholder values) documents the required keys for onboarding.
+- A checked-in `config/sheets-credentials.properties.example` template uses
+  placeholder/dummy values for every key — including `spreadsheet-id` and
+  `sheet-name` — documenting the required keys for onboarding without
+  leaking the real ones.
+- No default/fallback value for any of these six keys is hardcoded in any
+  committed file (`application.properties`, Java source, etc.) — e.g. no
+  `@Value("${sheets.spreadsheet-id:1_d5IR...}")`-style fallback. The only
+  place the real values exist is the gitignored properties file.
 - `application.properties` gets one new, non-secret property:
   `sheets.credentials-path`, defaulting to
   `config/sheets-credentials.properties` — same externalization pattern as
@@ -66,9 +79,11 @@ OAuth consent flow:
    client ID/secret from step 1.
 3. Authorize scope `https://www.googleapis.com/auth/spreadsheets`, signing in
    as the personal Google account that owns/edits the target Sheet.
-4. Exchange the authorization code for tokens; copy the refresh token shown.
+4. Exchange the authorization code for tokens; copy the refresh token and
+   access token shown.
 5. Fill in `config/sheets-credentials.properties` with the client ID, client
-   secret, refresh token, target spreadsheet ID, and sheet/tab name.
+   secret, refresh token, access token, target spreadsheet ID, and sheet/tab
+   name.
 
 This is called out as an explicit setup step in the implementation plan,
 the same way tessdata model files are for OCR.
@@ -89,8 +104,10 @@ time), consistent with the existing synchronous OCR flow.
 
 - `SheetRowAppender.appendRow` catches any exception raised by the Sheets
   API call (auth failure, network error, invalid spreadsheet ID, quota
-  error, etc.) internally, logs it at `error` level with context (but never
-  the credential values), and returns normally.
+  error, etc.) internally, logs it at `error` level including the
+  spreadsheet ID and sheet name as context (useful for debugging failures),
+  but never logs `client-id`, `client-secret`, `refresh-token`, or
+  `access-token`, and returns normally.
 - It never throws out to `OcrController`. The Sheets integration is
   best-effort/secondary — a Sheets outage or misconfiguration must never
   turn a successful OCR extraction into a failed API response.
