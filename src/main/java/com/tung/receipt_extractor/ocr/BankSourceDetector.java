@@ -8,14 +8,18 @@ import java.util.regex.Pattern;
 
 public final class BankSourceDetector {
 
-    private static final String DEFAULT_BANK_SOURCE = "Zalopay";
+    public static final String TECHCOMBANK = "Techcombank";
+    public static final String VIETCOMBANK = "Vietcombank";
+    public static final String ZALOPAY = "Zalopay";
+
+    private static final String DEFAULT_BANK_SOURCE = ZALOPAY;
     private static final Pattern WORD_PATTERN = Pattern.compile("\\p{L}+");
 
     private static final Map<String, String> KEYWORD_TO_BANK = Map.of(
-            "vcbdigibank", "Vietcombank",
-            "vietcombank", "Vietcombank",
-            "techcombank", "Techcombank",
-            "zalopay", "Zalopay"
+            "vcbdigibank", VIETCOMBANK,
+            "vietcombank", VIETCOMBANK,
+            "techcombank", TECHCOMBANK,
+            "zalopay", ZALOPAY
     );
 
     private BankSourceDetector() {
