@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This is a freshly scaffolded Spring Boot application (from Spring Initializr) with no business logic yet — just the default application entry point and a context-loads test. The project is named "receipt-extractor" (group `com.tung`), implying its purpose will be extracting data from receipts, but that functionality has not been implemented.
+This Spring Boot application (from Spring Initializr) now has one real feature implemented: OCR text extraction from receipt images. The project is named "receipt-extractor" (group `com.tung`); further receipt-data-extraction functionality beyond raw OCR text is not yet implemented.
 
 ## Commands
 
@@ -23,3 +23,12 @@ Use the Gradle wrapper (`./gradlew`), not a system-installed Gradle.
 - Tests use JUnit 5 (`useJUnitPlatform()` is configured in `build.gradle`).
 - Base package: `com.tung.receipt_extractor`. Main class: `ReceiptExtractorApplication` (`src/main/java/com/tung/receipt_extractor/ReceiptExtractorApplication.java`).
 - Configuration lives in `src/main/resources/application.properties`.
+
+## OCR text extraction
+
+- Endpoint: `POST /api/ocr/extract` — multipart file upload, field name `file`, accepts `image/jpeg` or `image/png`. Returns `{"text": "..."}` on success.
+- Config properties (in `application.properties`): `ocr.tessdata-path` (default `src/main/resources/tessdata`) and `ocr.languages` (default `vie+eng`).
+- Native library prerequisite: this uses Tess4J, which wraps system-installed Tesseract/Leptonica shared libraries via JNA — it does not bundle them. Install the dev packages before building/running/testing:
+  - Fedora: `sudo dnf install tesseract-devel leptonica-devel`
+  - Debian/Ubuntu: `sudo apt-get install libtesseract-dev libleptonica-dev`
+  - If tests fail with `UnsatisfiedLinkError: Unable to load library 'tesseract'`, this is the fix.

@@ -1,5 +1,6 @@
 package com.tung.receipt_extractor.ocr;
 
+import net.sourceforge.tess4j.TesseractException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -62,5 +63,24 @@ class OcrControllerTest {
         mockMvc.perform(multipart("/api/ocr/extract").file(file))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("unsupported file type"));
+    }
+
+    @Test
+    void returns400WhenFilePartIsMissing() throws Exception {
+        mockMvc.perform(multipart("/api/ocr/extract"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("file is required"));
+    }
+
+    @Test
+    void returns500WhenOcrServiceThrows() throws Exception {
+        when(ocrService.extractText(any())).thenThrow(new TesseractException("boom"));
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "receipt.png", "image/png", "fake-image-bytes".getBytes());
+
+        mockMvc.perform(multipart("/api/ocr/extract").file(file))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error").value("failed to extract text from image"));
     }
 }

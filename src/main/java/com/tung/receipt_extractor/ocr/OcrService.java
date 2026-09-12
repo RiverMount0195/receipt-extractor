@@ -19,6 +19,7 @@ public class OcrService {
     private static final String DEFAULT_FORMAT = "png";
 
     private final ITesseract tesseract;
+    private final Object lock = new Object();
 
     public OcrService(ITesseract tesseract) {
         this.tesseract = tesseract;
@@ -28,9 +29,14 @@ public class OcrService {
         File tempFile = Files.createTempFile("ocr-", "." + detectFormat(imageBytes)).toFile();
         try {
             Files.write(tempFile.toPath(), imageBytes);
-            return tesseract.doOCR(tempFile);
+            // Tess4J's Tesseract is not thread-safe: doOCR() mutates a shared native
+            // handle field on init()/dispose(), so concurrent calls on the same
+            // singleton instance can corrupt or double-free it. Serialize access.
+            synchronized (lock) {
+                return tesseract.doOCR(tempFile);
+            }
         } finally {
-            tempFile.delete();
+            Files.deleteIfExists(tempFile.toPath());
         }
     }
 
@@ -43,7 +49,10 @@ public class OcrService {
         try (ImageInputStream iis = ImageIO.createImageInputStream(new ByteArrayInputStream(imageBytes))) {
             Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
             if (readers.hasNext()) {
-                return readers.next().getFormatName().toLowerCase();
+                ImageReader reader = readers.next();
+                String format = reader.getFormatName().toLowerCase(java.util.Locale.ROOT);
+                reader.dispose();
+                return format;
             }
         }
         return DEFAULT_FORMAT;
