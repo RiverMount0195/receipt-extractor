@@ -1,5 +1,6 @@
 package com.tung.receipt_extractor.ocr;
 
+import com.tung.receipt_extractor.sheets.SheetRowAppender;
 import net.sourceforge.tess4j.TesseractException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,9 +22,11 @@ public class OcrController {
     private static final Set<String> SUPPORTED_CONTENT_TYPES = Set.of("image/jpeg", "image/png");
 
     private final OcrService ocrService;
+    private final SheetRowAppender sheetRowAppender;
 
-    public OcrController(OcrService ocrService) {
+    public OcrController(OcrService ocrService, SheetRowAppender sheetRowAppender) {
         this.ocrService = ocrService;
+        this.sheetRowAppender = sheetRowAppender;
     }
 
     @PostMapping(value = "/api/ocr/extract", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -39,6 +42,11 @@ public class OcrController {
             String bankSource = BankSourceDetector.detect(text);
             Long amount = AmountDetector.detect(text);
             String message = MessageDetector.detect(text, bankSource);
+            try {
+                sheetRowAppender.appendRow(bankSource, amount, message);
+            } catch (Exception e) {
+                log.error("Sheets append failed; returning OCR response anyway", e);
+            }
             return ResponseEntity.ok(new OcrResponse(text, bankSource, amount, message));
         } catch (TesseractException | IOException e) {
             log.error("OCR extraction failed", e);
