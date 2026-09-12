@@ -53,4 +53,14 @@ class OcrControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("file is required"));
     }
+
+    @Test
+    void returns400ForNullContentType() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "receipt.png", null, "fake-image-bytes".getBytes());
+
+        mockMvc.perform(multipart("/api/ocr/extract").file(file))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("unsupported file type"));
+    }
 }

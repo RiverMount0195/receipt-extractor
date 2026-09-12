@@ -31,7 +31,7 @@ public class OcrController {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "file is required"));
         }
-        if (!SUPPORTED_CONTENT_TYPES.contains(file.getContentType())) {
+        if (file.getContentType() == null || !SUPPORTED_CONTENT_TYPES.contains(file.getContentType())) {
             return ResponseEntity.badRequest().body(Map.of("error", "unsupported file type"));
         }
         try {
