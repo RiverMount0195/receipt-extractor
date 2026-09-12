@@ -37,7 +37,8 @@ public class OcrController {
         try {
             String text = ocrService.extractText(file.getBytes());
             String bankSource = BankSourceDetector.detect(text);
-            return ResponseEntity.ok(new OcrResponse(text, bankSource));
+            Long amount = AmountDetector.detect(text);
+            return ResponseEntity.ok(new OcrResponse(text, bankSource, amount));
         } catch (TesseractException | IOException e) {
             log.error("OCR extraction failed", e);
             return ResponseEntity.internalServerError().body(Map.of("error", "failed to extract text from image"));
