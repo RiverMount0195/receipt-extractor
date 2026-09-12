@@ -62,6 +62,20 @@ class OcrControllerTest {
     }
 
     @Test
+    void returnsMessageExtractedForDetectedBankSource() throws Exception {
+        when(ocrService.extractText(any())).thenReturn(
+                "TECHCOMBANK\nChuyển thành công\nLời nhắn\nNGUYEN SON TUNG chuyen tien\nNgày thực hiện\n12 thg 9, 2026");
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "receipt.png", "image/png", "fake-image-bytes".getBytes());
+
+        mockMvc.perform(multipart("/api/ocr/extract").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bankSource").value("Techcombank"))
+                .andExpect(jsonPath("$.message").value("NGUYEN SON TUNG chuyen tien"));
+    }
+
+    @Test
     void returns400ForUnsupportedContentType() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "receipt.txt", "text/plain", "not an image".getBytes());
