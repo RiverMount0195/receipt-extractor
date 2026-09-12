@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class SheetRowAppender {
@@ -25,8 +26,10 @@ public class SheetRowAppender {
 
     public void appendRow(String bankSource, Long amount, String message) {
         try {
+            Object bankSourceValue = Objects.requireNonNullElse(bankSource, "");
             Object amountValue = amount == null ? "" : amount;
-            List<Object> row = List.of(bankSource, amountValue, message, Instant.now().toString());
+            Object messageValue = Objects.requireNonNullElse(message, "");
+            List<Object> row = List.of(bankSourceValue, amountValue, messageValue, Instant.now().toString());
             ValueRange body = new ValueRange().setValues(List.of(row));
 
             sheetsClient.spreadsheets().values()

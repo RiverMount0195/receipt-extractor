@@ -4,7 +4,6 @@ import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.auth.http.HttpCredentialsAdapter;
-import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.UserCredentials;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -20,8 +19,7 @@ import java.util.Properties;
 @Configuration
 public class SheetsConfig {
 
-    @Bean
-    public Properties sheetsCredentials(@Value("${sheets.credentials-path}") String credentialsPath) throws IOException {
+    static Properties loadCredentials(String credentialsPath) throws IOException {
         Properties properties = new Properties();
         try (InputStream in = Files.newInputStream(Path.of(credentialsPath))) {
             properties.load(in);
@@ -30,12 +28,14 @@ public class SheetsConfig {
     }
 
     @Bean
-    public Sheets sheetsClient(Properties sheetsCredentials) throws GeneralSecurityException, IOException {
+    public Sheets sheetsClient(@Value("${sheets.credentials-path}") String credentialsPath)
+            throws GeneralSecurityException, IOException {
+        Properties sheetsCredentials = loadCredentials(credentialsPath);
+
         UserCredentials credentials = UserCredentials.newBuilder()
                 .setClientId(sheetsCredentials.getProperty("client-id"))
                 .setClientSecret(sheetsCredentials.getProperty("client-secret"))
                 .setRefreshToken(sheetsCredentials.getProperty("refresh-token"))
-                .setAccessToken(new AccessToken(sheetsCredentials.getProperty("access-token"), null))
                 .build();
 
         return new Sheets.Builder(
@@ -47,7 +47,10 @@ public class SheetsConfig {
     }
 
     @Bean
-    public SheetsProperties sheetsProperties(Properties sheetsCredentials) {
+    public SheetsProperties sheetsProperties(@Value("${sheets.credentials-path}") String credentialsPath)
+            throws IOException {
+        Properties sheetsCredentials = loadCredentials(credentialsPath);
+
         return new SheetsProperties(
                 sheetsCredentials.getProperty("spreadsheet-id"),
                 sheetsCredentials.getProperty("sheet-name"));

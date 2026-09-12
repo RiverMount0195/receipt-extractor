@@ -40,5 +40,5 @@ out/
 .worktrees/
 
 ### Secrets ###
-config/
+config/*
 !config/*.example

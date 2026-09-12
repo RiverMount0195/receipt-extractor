@@ -14,9 +14,7 @@ class SheetsConfigTest {
 
     @Test
     void loadsCredentialsFromPropertiesFile() throws Exception {
-        SheetsConfig config = new SheetsConfig();
-
-        Properties credentials = config.sheetsCredentials(TEST_CREDENTIALS_PATH);
+        Properties credentials = SheetsConfig.loadCredentials(TEST_CREDENTIALS_PATH);
 
         assertEquals("test-client-id", credentials.getProperty("client-id"));
         assertEquals("test-client-secret", credentials.getProperty("client-secret"));
@@ -29,9 +27,8 @@ class SheetsConfigTest {
     @Test
     void buildsSheetsClientFromCredentials() throws Exception {
         SheetsConfig config = new SheetsConfig();
-        Properties credentials = config.sheetsCredentials(TEST_CREDENTIALS_PATH);
 
-        Sheets sheetsClient = config.sheetsClient(credentials);
+        Sheets sheetsClient = config.sheetsClient(TEST_CREDENTIALS_PATH);
 
         assertNotNull(sheetsClient);
     }
@@ -39,9 +36,8 @@ class SheetsConfigTest {
     @Test
     void buildsSheetsPropertiesFromCredentials() throws Exception {
         SheetsConfig config = new SheetsConfig();
-        Properties credentials = config.sheetsCredentials(TEST_CREDENTIALS_PATH);
 
-        SheetsProperties sheetsProperties = config.sheetsProperties(credentials);
+        SheetsProperties sheetsProperties = config.sheetsProperties(TEST_CREDENTIALS_PATH);
 
         assertEquals("test-spreadsheet-id", sheetsProperties.spreadsheetId());
         assertEquals("Test", sheetsProperties.sheetName());
