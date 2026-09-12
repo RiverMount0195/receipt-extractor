@@ -33,7 +33,20 @@ class OcrControllerTest {
         mockMvc.perform(multipart("/api/ocr/extract").file(file))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.text").value("Tổng cộng: 125.000 VND"))
-                .andExpect(jsonPath("$.bankSource").value("Zalopay"));
+                .andExpect(jsonPath("$.bankSource").value("Zalopay"))
+                .andExpect(jsonPath("$.amount").value(125000));
+    }
+
+    @Test
+    void returnsNullAmountWhenTextHasNoAmount() throws Exception {
+        when(ocrService.extractText(any())).thenReturn("Giao dịch thành công!");
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "receipt.png", "image/png", "fake-image-bytes".getBytes());
+
+        mockMvc.perform(multipart("/api/ocr/extract").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.amount").doesNotExist());
     }
 
     @Test
