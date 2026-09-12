@@ -32,7 +32,20 @@ class OcrControllerTest {
 
         mockMvc.perform(multipart("/api/ocr/extract").file(file))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.text").value("Tổng cộng: 125.000 VND"));
+                .andExpect(jsonPath("$.text").value("Tổng cộng: 125.000 VND"))
+                .andExpect(jsonPath("$.bankSource").value("Zalopay"));
+    }
+
+    @Test
+    void returnsVietcombankBankSourceWhenTextContainsVcbMarker() throws Exception {
+        when(ocrService.extractText(any())).thenReturn("VCBDigibank\nGiao dịch thành công!\nVND 2,000");
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "receipt.png", "image/png", "fake-image-bytes".getBytes());
+
+        mockMvc.perform(multipart("/api/ocr/extract").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bankSource").value("Vietcombank"));
     }
 
     @Test
