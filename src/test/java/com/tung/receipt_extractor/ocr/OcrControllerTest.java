@@ -24,14 +24,15 @@ class OcrControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private OcrService ocrService;
+    private ReceiptExtractionService receiptExtractionService;
 
     @MockitoBean
     private SheetRowAppender sheetRowAppender;
 
     @Test
-    void returnsExtractedTextForValidImageUpload() throws Exception {
-        when(ocrService.extractText(any())).thenReturn("Tổng cộng: 125.000 VND");
+    void returnsExtractedResponseForValidImageUpload() throws Exception {
+        when(receiptExtractionService.extract(any())).thenReturn(
+                new OcrResponse("Tổng cộng: 125.000 VND", "Zalopay", 125000L, "chuyen tien"));
 
         MockMultipartFile file = new MockMultipartFile(
                 "file", "receipt.png", "image/png", "fake-image-bytes".getBytes());
@@ -40,51 +41,14 @@ class OcrControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.text").value("Tổng cộng: 125.000 VND"))
                 .andExpect(jsonPath("$.bankSource").value("Zalopay"))
-                .andExpect(jsonPath("$.amount").value(125000));
+                .andExpect(jsonPath("$.amount").value(125000))
+                .andExpect(jsonPath("$.message").value("chuyen tien"));
     }
 
     @Test
-    void returnsNullAmountWhenTextHasNoAmount() throws Exception {
-        when(ocrService.extractText(any())).thenReturn("Giao dịch thành công!");
-
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "receipt.png", "image/png", "fake-image-bytes".getBytes());
-
-        mockMvc.perform(multipart("/api/ocr/extract").file(file))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.amount").doesNotExist());
-    }
-
-    @Test
-    void returnsVietcombankBankSourceWhenTextContainsVcbMarker() throws Exception {
-        when(ocrService.extractText(any())).thenReturn("VCBDigibank\nGiao dịch thành công!\nVND 2,000");
-
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "receipt.png", "image/png", "fake-image-bytes".getBytes());
-
-        mockMvc.perform(multipart("/api/ocr/extract").file(file))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.bankSource").value("Vietcombank"));
-    }
-
-    @Test
-    void returnsMessageExtractedForDetectedBankSource() throws Exception {
-        when(ocrService.extractText(any())).thenReturn(
-                "TECHCOMBANK\nChuyển thành công\nLời nhắn\nNGUYEN SON TUNG chuyen tien\nNgày thực hiện\n12 thg 9, 2026");
-
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "receipt.png", "image/png", "fake-image-bytes".getBytes());
-
-        mockMvc.perform(multipart("/api/ocr/extract").file(file))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.bankSource").value("Techcombank"))
-                .andExpect(jsonPath("$.message").value("NGUYEN SON TUNG chuyen tien"));
-    }
-
-    @Test
-    void invokesSheetRowAppenderWithDetectedFields() throws Exception {
-        when(ocrService.extractText(any())).thenReturn(
-                "TECHCOMBANK\nChuyển thành công\nSố tiền: 50.000\nLời nhắn\nNGUYEN VAN A chuyen tien\nNgày thực hiện\n12 thg 9, 2026");
+    void invokesSheetRowAppenderWithExtractedFields() throws Exception {
+        when(receiptExtractionService.extract(any())).thenReturn(
+                new OcrResponse("raw text", "Techcombank", 50000L, "NGUYEN VAN A chuyen tien"));
 
         MockMultipartFile file = new MockMultipartFile(
                 "file", "receipt.png", "image/png", "fake-image-bytes".getBytes());
@@ -97,7 +61,8 @@ class OcrControllerTest {
 
     @Test
     void returns200EvenWhenSheetRowAppenderThrows() throws Exception {
-        when(ocrService.extractText(any())).thenReturn("Giao dịch thành công!\nVND 2,000");
+        when(receiptExtractionService.extract(any())).thenReturn(
+                new OcrResponse("Giao dịch thành công!\nVND 2,000", "Zalopay", 2000L, ""));
         doThrow(new RuntimeException("boom")).when(sheetRowAppender).appendRow(any(), any(), any());
 
         MockMultipartFile file = new MockMultipartFile(
@@ -146,8 +111,8 @@ class OcrControllerTest {
     }
 
     @Test
-    void returns500WhenOcrServiceThrows() throws Exception {
-        when(ocrService.extractText(any())).thenThrow(new TesseractException("boom"));
+    void returns500WhenReceiptExtractionServiceThrows() throws Exception {
+        when(receiptExtractionService.extract(any())).thenThrow(new TesseractException("boom"));
 
         MockMultipartFile file = new MockMultipartFile(
                 "file", "receipt.png", "image/png", "fake-image-bytes".getBytes());
