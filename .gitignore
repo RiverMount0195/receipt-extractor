@@ -42,3 +42,7 @@ out/
 ### Secrets ###
 config/*
 !config/*.example
+
+### Deploy secrets ###
+deploy/*
+!deploy/*.example

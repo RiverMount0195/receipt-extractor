@@ -27,7 +27,7 @@ Use the Gradle wrapper (`./gradlew`), not a system-installed Gradle.
 ## OCR text extraction
 
 - Endpoint: `POST /api/ocr/extract` — multipart file upload, field name `file`, accepts `image/jpeg` or `image/png`. Returns `{"text": "..."}` on success.
-- Config properties (in `application.yml`): `ocr.tessdata-path` (default `src/main/resources/tessdata`) and `ocr.languages` (default `vie+eng`).
+- Config properties (in `application.yml`): `ocr.tessdata-path` (default `src/main/resources/tessdata`, a local-dev filesystem path — the deployed container overrides this via the `OCR_TESSDATA_PATH` env var, since Tesseract can't read the `.traineddata` files from inside the jar) and `ocr.languages` (default `vie+eng`).
 - Native library prerequisite: this uses Tess4J, which wraps system-installed Tesseract/Leptonica shared libraries via JNA — it does not bundle them. Install the dev packages before building/running/testing:
   - Fedora: `sudo dnf install tesseract-devel leptonica-devel`
   - Debian/Ubuntu: `sudo apt-get install libtesseract-dev libleptonica-dev`
@@ -39,3 +39,10 @@ Use the Gradle wrapper (`./gradlew`), not a system-installed Gradle.
 - Requires 5 environment variables holding the OAuth2 credentials and target sheet: `SHEETS_CLIENT_ID`, `SHEETS_CLIENT_SECRET`, `SHEETS_REFRESH_TOKEN`, `SHEETS_SPREADSHEET_ID`, `SHEETS_SHEET_NAME`. These bind to `sheets.client-id`, `sheets.client-secret`, `sheets.refresh-token`, `sheets.spreadsheet-id`, `sheets.sheet-name` via Spring's relaxed environment-variable binding — no properties file is read. See `docs/superpowers/specs/2026-09-13-google-sheets-export-design.md` ("Obtaining the refresh token") for how to obtain the OAuth values via Google's OAuth Playground.
 - If any of these is unset, the whole app fails to start with a placeholder-resolution error — this is expected until they're set; it is not required for running the test suite (tests set dummy values via `@TestPropertySource`).
 - Do not enable `com.google.api.client.http` logging at `CONFIG` level or above in production — it logs full HTTP request bodies, which for the token-refresh endpoint includes the client secret and refresh token in plaintext.
+
+## Deploying to Google Cloud
+
+- Deploys as a container to Cloud Run via a multi-stage `Dockerfile` (JDK 25 build stage, JRE 25 + Tesseract/Leptonica runtime stage) checked into the repo root. `gcloud run deploy --source .` builds the image with Cloud Build and pushes it to an auto-created Artifact Registry repo — no manual registry setup needed.
+- The service is deployed with `--no-allow-unauthenticated`: only callers with a valid Google identity token and the `roles/run.invoker` role can reach it. This app handles personal financial data (receipt images, bank transfer details) and has no endpoint-level auth of its own.
+- Secrets are passed as plain Cloud Run environment variables (not Secret Manager — see the design spec for the trade-off) via `--env-vars-file`. Copy `deploy/sheets-env.yaml.example` to `deploy/sheets-env.yaml` (gitignored) and fill in real values before deploying.
+- One-time setup and the full step-by-step deploy/verify/redeploy procedure: see `docs/superpowers/specs/2026-09-13-google-cloud-deployment-design.md`.

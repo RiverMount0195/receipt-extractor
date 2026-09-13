@@ -1,0 +1,5 @@
+SHEETS_CLIENT_ID: "your-oauth-client-id"
+SHEETS_CLIENT_SECRET: "your-oauth-client-secret"
+SHEETS_REFRESH_TOKEN: "your-oauth-refresh-token"
+SHEETS_SPREADSHEET_ID: "your-google-sheet-id"
+SHEETS_SHEET_NAME: "your-google-sheet-tab-name"
