@@ -19,3 +19,8 @@ sheets:
   refresh-token: ${SHEETS_REFRESH_TOKEN}
   spreadsheet-id: ${SHEETS_SPREADSHEET_ID}
   sheet-name: ${SHEETS_SHEET_NAME}
+
+telegram:
+  bot-token: ${TELEGRAM_BOT_TOKEN}
+  allowed-chat-id: ${TELEGRAM_ALLOWED_CHAT_ID}
+  webhook-secret-token: ${TELEGRAM_WEBHOOK_SECRET_TOKEN}
