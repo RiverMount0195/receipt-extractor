@@ -48,9 +48,17 @@ for i in $(seq 1 30); do
 done
 sleep 3
 
-echo "Exercising OCR endpoint..."
+echo "Exercising OCR endpoint (PNG)..."
 curl -s -f -F "file=@$REPO_ROOT/src/test/resources/ocr/sample-receipt.png;type=image/png" \
   http://localhost:8080/api/ocr/extract > /tmp/regen-native-config-response.json
+
+# Telegram always sends photos as JPEG, and the JPEG codec's ImageIO reader
+# (com.sun.imageio.plugins.jpeg.JPEGImageReader) needs its own JNI method-ID
+# registrations that only the PNG request above does not trigger. Exercising
+# both formats here is what makes the agent capture both codec paths.
+echo "Exercising OCR endpoint (JPEG)..."
+curl -s -f -F "file=@$REPO_ROOT/src/test/resources/ocr/sample-receipt.jpg;type=image/jpeg" \
+  http://localhost:8080/api/ocr/extract > /tmp/regen-native-config-response-jpeg.json
 
 echo "Stopping app..."
 kill -TERM "$APP_PID"
@@ -60,6 +68,9 @@ mkdir -p "$TARGET_DIR"
 cp "$CONFIG_OUTPUT_DIR/reachability-metadata.json" "$TARGET_DIR/reachability-metadata.json"
 
 echo "Updated $TARGET_DIR/reachability-metadata.json"
-echo "OCR response was:"
+echo "OCR response (PNG) was:"
 cat /tmp/regen-native-config-response.json
+echo
+echo "OCR response (JPEG) was:"
+cat /tmp/regen-native-config-response-jpeg.json
 echo
