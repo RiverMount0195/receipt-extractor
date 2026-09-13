@@ -21,11 +21,11 @@ public class OcrController {
     private static final Logger log = LoggerFactory.getLogger(OcrController.class);
     private static final Set<String> SUPPORTED_CONTENT_TYPES = Set.of("image/jpeg", "image/png");
 
-    private final OcrService ocrService;
+    private final ReceiptExtractionService receiptExtractionService;
     private final SheetRowAppender sheetRowAppender;
 
-    public OcrController(OcrService ocrService, SheetRowAppender sheetRowAppender) {
-        this.ocrService = ocrService;
+    public OcrController(ReceiptExtractionService receiptExtractionService, SheetRowAppender sheetRowAppender) {
+        this.receiptExtractionService = receiptExtractionService;
         this.sheetRowAppender = sheetRowAppender;
     }
 
@@ -38,16 +38,13 @@ public class OcrController {
             return ResponseEntity.badRequest().body(Map.of("error", "unsupported file type"));
         }
         try {
-            String text = ocrService.extractText(file.getBytes());
-            String bankSource = BankSourceDetector.detect(text);
-            Long amount = AmountDetector.detect(text);
-            String message = MessageDetector.detect(text, bankSource);
+            OcrResponse response = receiptExtractionService.extract(file.getBytes());
             try {
-                sheetRowAppender.appendRow(bankSource, amount, message);
+                sheetRowAppender.appendRow(response.bankSource(), response.amount(), response.message());
             } catch (Exception e) {
                 log.error("Sheets append failed; returning OCR response anyway", e);
             }
-            return ResponseEntity.ok(new OcrResponse(text, bankSource, amount, message));
+            return ResponseEntity.ok(response);
         } catch (TesseractException | IOException e) {
             log.error("OCR extraction failed", e);
             return ResponseEntity.internalServerError().body(Map.of("error", "failed to extract text from image"));
