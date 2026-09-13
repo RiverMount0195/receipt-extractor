@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import java.net.URI;
 import java.util.Map;
@@ -24,29 +25,51 @@ public class TelegramClient {
 
     public String getFilePath(String fileId) {
         URI uri = URI.create(TELEGRAM_API_BASE_URL + "/bot" + botToken + "/getFile?file_id=" + fileId);
-        TelegramFileResponse response = restClient.get()
-                .uri(uri)
-                .retrieve()
-                .body(TelegramFileResponse.class);
+        TelegramFileResponse response;
+        try {
+            response = restClient.get()
+                    .uri(uri)
+                    .retrieve()
+                    .body(TelegramFileResponse.class);
+        } catch (RestClientException e) {
+            throw redacted(e);
+        }
+        if (response == null || response.result() == null || response.result().filePath() == null) {
+            throw new RuntimeException("Telegram getFile returned no file path");
+        }
         return response.result().filePath();
     }
 
     public byte[] downloadFile(String filePath) {
         URI uri = URI.create(TELEGRAM_API_BASE_URL + "/file/bot" + botToken + "/" + filePath);
-        return restClient.get()
-                .uri(uri)
-                .retrieve()
-                .body(byte[].class);
+        try {
+            return restClient.get()
+                    .uri(uri)
+                    .retrieve()
+                    .body(byte[].class);
+        } catch (RestClientException e) {
+            throw redacted(e);
+        }
     }
 
     public void sendMessage(long chatId, String text) {
         URI uri = URI.create(TELEGRAM_API_BASE_URL + "/bot" + botToken + "/sendMessage");
-        restClient.post()
-                .uri(uri)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("chat_id", chatId, "text", text))
-                .retrieve()
-                .toBodilessEntity();
+        try {
+            restClient.post()
+                    .uri(uri)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("chat_id", chatId, "text", text))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException e) {
+            throw redacted(e);
+        }
+    }
+
+    private RuntimeException redacted(RestClientException e) {
+        String message = e.getMessage();
+        String redactedMessage = message == null ? null : message.replace(botToken, "<redacted>");
+        return new RuntimeException(redactedMessage, e);
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -54,6 +77,6 @@ public class TelegramClient {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record TelegramFile(@JsonProperty("file_id") String fileId, @JsonProperty("file_path") String filePath) {
+    record TelegramFile(@JsonProperty("file_path") String filePath) {
     }
 }

@@ -7,11 +7,14 @@ import org.springframework.web.client.RestClient;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class TelegramClientTest {
@@ -50,6 +53,37 @@ class TelegramClientTest {
         byte[] result = client.downloadFile("photos/file_1.jpg");
 
         assertArrayEquals(imageBytes, result);
+        server.verify();
+    }
+
+    @Test
+    void getFilePathRedactsBotTokenFromExceptionMessageOnServerError() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://api.telegram.org/bot" + BOT_TOKEN + "/getFile?file_id=file-123"))
+                .andExpect(method(GET))
+                .andRespond(withServerError());
+        TelegramClient client = new TelegramClient(builder, PROPERTIES);
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> client.getFilePath("file-123"));
+
+        assertFalse(exception.getMessage().contains(BOT_TOKEN),
+                "Exception message should not contain the raw bot token: " + exception.getMessage());
+        server.verify();
+    }
+
+    @Test
+    void getFilePathThrowsClearExceptionWhenTelegramResponseHasNoFilePath() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://api.telegram.org/bot" + BOT_TOKEN + "/getFile?file_id=file-123"))
+                .andExpect(method(GET))
+                .andRespond(withSuccess("{\"ok\":false}", MediaType.APPLICATION_JSON));
+        TelegramClient client = new TelegramClient(builder, PROPERTIES);
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> client.getFilePath("file-123"));
+
+        assertEquals("Telegram getFile returned no file path", exception.getMessage());
         server.verify();
     }
 

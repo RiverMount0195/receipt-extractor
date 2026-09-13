@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 @RestController
@@ -55,7 +54,7 @@ public class TelegramWebhookController {
         TelegramUpdate update;
         try {
             update = objectMapper.readValue(rawBody, TelegramUpdate.class);
-        } catch (JacksonException e) {
+        } catch (Exception e) {
             log.error("Failed to parse Telegram webhook payload", e);
             return ResponseEntity.ok().build();
         }

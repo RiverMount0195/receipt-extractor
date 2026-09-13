@@ -1,6 +1,7 @@
 package com.tung.receipt_extractor.telegram;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.web.client.RestClient;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -22,6 +23,9 @@ class TelegramConfigTest {
     void buildsRestClientBuilder() {
         TelegramConfig config = new TelegramConfig();
 
-        assertNotNull(config.restClientBuilder());
+        RestClient.Builder builder = config.restClientBuilder();
+
+        assertNotNull(builder);
+        assertNotNull(builder.build());
     }
 }
