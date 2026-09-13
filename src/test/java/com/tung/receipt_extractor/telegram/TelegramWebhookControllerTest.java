@@ -13,8 +13,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -145,6 +148,29 @@ class TelegramWebhookControllerTest {
         verify(telegramClient).sendMessage(ALLOWED_CHAT_ID, "Please send a photo of your receipt.");
         verify(receiptExtractionService, never()).extract(any());
         verify(sheetRowAppender, never()).appendRow(any(), any(), any());
+    }
+
+    @Test
+    void replySendFailureDoesNotPreventTelegramFrom200Response() throws Exception {
+        doThrow(new RuntimeException("boom")).when(telegramClient).sendMessage(anyLong(), anyString());
+
+        String payload = """
+                {
+                  "update_id": 1,
+                  "message": {
+                    "chat": { "id": 123456789 },
+                    "text": "hello"
+                  }
+                }
+                """;
+
+        mockMvc.perform(post("/api/telegram-webhook")
+                        .header(SECRET_HEADER, SECRET_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk());
+
+        verify(telegramClient).sendMessage(ALLOWED_CHAT_ID, "Please send a photo of your receipt.");
     }
 
     @Test
