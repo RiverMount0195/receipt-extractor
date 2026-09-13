@@ -9,6 +9,3 @@ spring:
 ocr:
   tessdata-path: src/main/resources/tessdata
   languages: vie+eng
-
-sheets:
-  credentials-path: config/sheets-credentials.properties

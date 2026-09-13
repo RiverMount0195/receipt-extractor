@@ -19,7 +19,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestPropertySource(properties = "sheets.credentials-path=src/test/resources/sheets/test-sheets-credentials.properties")
+@TestPropertySource(properties = {
+        "sheets.client-id=test-client-id",
+        "sheets.client-secret=test-client-secret",
+        "sheets.refresh-token=test-refresh-token",
+        "sheets.spreadsheet-id=test-spreadsheet-id",
+        "sheets.sheet-name=Test"
+})
 class OcrEndToEndTest {
 
     @Autowired

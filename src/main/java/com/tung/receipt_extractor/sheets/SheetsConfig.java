@@ -10,32 +10,21 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.security.GeneralSecurityException;
-import java.util.Properties;
 
 @Configuration
 public class SheetsConfig {
 
-    static Properties loadCredentials(String credentialsPath) throws IOException {
-        Properties properties = new Properties();
-        try (InputStream in = Files.newInputStream(Path.of(credentialsPath))) {
-            properties.load(in);
-        }
-        return properties;
-    }
-
     @Bean
-    public Sheets sheetsClient(@Value("${sheets.credentials-path}") String credentialsPath)
+    public Sheets sheetsClient(
+            @Value("${sheets.client-id}") String clientId,
+            @Value("${sheets.client-secret}") String clientSecret,
+            @Value("${sheets.refresh-token}") String refreshToken)
             throws GeneralSecurityException, IOException {
-        Properties sheetsCredentials = loadCredentials(credentialsPath);
-
         UserCredentials credentials = UserCredentials.newBuilder()
-                .setClientId(sheetsCredentials.getProperty("client-id"))
-                .setClientSecret(sheetsCredentials.getProperty("client-secret"))
-                .setRefreshToken(sheetsCredentials.getProperty("refresh-token"))
+                .setClientId(clientId)
+                .setClientSecret(clientSecret)
+                .setRefreshToken(refreshToken)
                 .build();
 
         return new Sheets.Builder(
@@ -47,12 +36,9 @@ public class SheetsConfig {
     }
 
     @Bean
-    public SheetsProperties sheetsProperties(@Value("${sheets.credentials-path}") String credentialsPath)
-            throws IOException {
-        Properties sheetsCredentials = loadCredentials(credentialsPath);
-
-        return new SheetsProperties(
-                sheetsCredentials.getProperty("spreadsheet-id"),
-                sheetsCredentials.getProperty("sheet-name"));
+    public SheetsProperties sheetsProperties(
+            @Value("${sheets.spreadsheet-id}") String spreadsheetId,
+            @Value("${sheets.sheet-name}") String sheetName) {
+        return new SheetsProperties(spreadsheetId, sheetName);
     }
 }
