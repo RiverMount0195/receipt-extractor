@@ -7,11 +7,16 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.io.IOException;
-import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -38,7 +43,9 @@ class SheetRowAppenderTest {
 
         SheetRowAppender appender = new SheetRowAppender(sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME));
 
+        ZonedDateTime before = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")).truncatedTo(ChronoUnit.SECONDS);
         appender.appendRow("Vietcombank", 125000L, "chuyen tien");
+        ZonedDateTime after = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")).truncatedTo(ChronoUnit.SECONDS);
 
         ArgumentCaptor<ValueRange> captor = ArgumentCaptor.forClass(ValueRange.class);
         verify(values).append(eq(SPREADSHEET_ID), eq(SHEET_NAME), captor.capture());
@@ -47,7 +54,11 @@ class SheetRowAppenderTest {
         assertEquals("Vietcombank", row.get(0));
         assertEquals(125000L, row.get(1));
         assertEquals("chuyen tien", row.get(2));
-        assertDoesNotThrow(() -> Instant.parse((String) row.get(3)));
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        LocalDateTime timestamp = LocalDateTime.parse((String) row.get(3), formatter);
+        assertFalse(timestamp.isBefore(before.toLocalDateTime()));
+        assertFalse(timestamp.isAfter(after.toLocalDateTime()));
     }
 
     @Test
