@@ -9,3 +9,10 @@ spring:
 ocr:
   tessdata-path: src/main/resources/tessdata
   languages: vie+eng
+
+sheets:
+  client-id: ${SHEETS_CLIENT_ID}
+  client-secret: ${SHEETS_CLIENT_SECRET}
+  refresh-token: ${SHEETS_REFRESH_TOKEN}
+  spreadsheet-id: ${SHEETS_SPREADSHEET_ID}
+  sheet-name: ${SHEETS_SHEET_NAME}
