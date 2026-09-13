@@ -27,29 +27,36 @@ New package `com.tung.receipt_extractor.telegram`, parallel to `ocr` and
 `POST /api/telegram-webhook` (Telegram calls this synchronously for every
 update):
 
-1. Controller reads the raw JSON request body and logs it at `info` level
-   before doing anything else — this is the only place the raw Telegram
-   payload is captured, useful for debugging webhook behavior.
-2. Parses the body into a `TelegramUpdate` DTO (unknown fields ignored).
-3. If there is no `message` on the update (e.g. `edited_message`,
+1. Controller compares the `X-Telegram-Bot-Api-Secret-Token` request header
+   against the configured `telegram.webhook-secret-token`. If it doesn't
+   match, respond `401 Unauthorized` immediately — no body logging, no
+   parsing, no further action. This request did not come from Telegram (a
+   valid Telegram webhook always sends the secret token it was registered
+   with), so there is no update to retry and nothing to gain from processing
+   it further.
+2. Controller reads the raw JSON request body and logs it at `info` level —
+   this is the only place the raw Telegram payload is captured, useful for
+   debugging webhook behavior.
+3. Parses the body into a `TelegramUpdate` DTO (unknown fields ignored).
+4. If there is no `message` on the update (e.g. `edited_message`,
    `channel_post`, or any other update type), return `200 OK` with no
    further action and no chat reply.
-4. If the message's chat id does not match the configured
+5. If the message's chat id does not match the configured
    `telegram.allowed-chat-id`, return `200 OK` with no further action and no
    chat reply.
-5. If the message has no `photo`, reply in-chat with
+6. If the message has no `photo`, reply in-chat with
    `"Please send a photo of your receipt."` and return `200 OK`.
-6. Otherwise, pick the largest entry in `photo` (by width), call Telegram's
+7. Otherwise, pick the largest entry in `photo` (by width), call Telegram's
    `getFile` API to resolve a `file_path`, then download the image bytes
    from Telegram's file endpoint.
-7. Run `ReceiptExtractionService.extract(bytes)` (see refactor below) to get
+8. Run `ReceiptExtractionService.extract(bytes)` (see refactor below) to get
    `bankSource`, `amount`, and an OCR-derived `message`.
-8. If the Telegram message has a non-blank `caption`, it overrides the
+9. If the Telegram message has a non-blank `caption`, it overrides the
    OCR-derived `message` for this row.
-9. Call `SheetRowAppender.appendRow(bankSource, amount, message)` (existing,
-   unchanged, already best-effort/non-throwing).
-10. Reply in-chat with a confirmation summarizing what was recorded.
-11. Any exception raised in steps 6-10 is caught, logged, answered with a
+10. Call `SheetRowAppender.appendRow(bankSource, amount, message)` (existing,
+    unchanged, already best-effort/non-throwing).
+11. Reply in-chat with a confirmation summarizing what was recorded.
+12. Any exception raised in steps 7-11 is caught, logged, answered with a
     generic in-chat error message, and the endpoint still returns `200 OK`.
 
 The webhook never returns a non-2xx status — every code path is caught and
@@ -85,11 +92,15 @@ controllers.
   feature needs are modeled; everything else in Telegram's schema is
   ignored.
 - **`TelegramProperties`** — config record: `botToken`, `allowedChatId`,
-  bound from `telegram.bot-token` / `telegram.allowed-chat-id` via Spring's
-  relaxed binding (env vars `TELEGRAM_BOT_TOKEN` / `TELEGRAM_ALLOWED_CHAT_ID`)
-  — same pattern as `SheetsProperties`. If either is unset, the app fails to
-  start with a placeholder-resolution error, same as the existing Sheets
-  properties; tests set dummy values via `@TestPropertySource`.
+  `webhookSecretToken`, bound from `telegram.bot-token` /
+  `telegram.allowed-chat-id` / `telegram.webhook-secret-token` via Spring's
+  relaxed binding (env vars `TELEGRAM_BOT_TOKEN` / `TELEGRAM_ALLOWED_CHAT_ID`
+  / `TELEGRAM_WEBHOOK_SECRET_TOKEN`) — same pattern as `SheetsProperties`. If
+  any is unset, the app fails to start with a placeholder-resolution error,
+  same as the existing Sheets properties; tests set dummy values via
+  `@TestPropertySource`. The secret token value must match whatever was
+  passed as `secret_token` when the webhook was registered with Telegram's
+  `setWebhook` call (done outside this repo).
 - **`TelegramClient`** — wraps a Spring `RestClient` bean (already available
   transitively via `spring-boot-starter-webmvc`; no new dependency) against
   Telegram's Bot API (`https://api.telegram.org/bot<token>/...`):
@@ -114,13 +125,15 @@ No new response DTO for the webhook endpoint — it always returns an empty
 telegram:
   bot-token: ${TELEGRAM_BOT_TOKEN}
   allowed-chat-id: ${TELEGRAM_ALLOWED_CHAT_ID}
+  webhook-secret-token: ${TELEGRAM_WEBHOOK_SECRET_TOKEN}
 ```
 
-Two new required environment variables, `TELEGRAM_BOT_TOKEN` and
-`TELEGRAM_ALLOWED_CHAT_ID`, alongside the existing five `SHEETS_*` variables
-— same "app fails to start until set" behavior, same
-`deploy/sheets-env.yaml`-style file for Cloud Run (or that file is renamed/
-extended to cover both integrations — left to the implementation plan).
+Three new required environment variables, `TELEGRAM_BOT_TOKEN`,
+`TELEGRAM_ALLOWED_CHAT_ID`, and `TELEGRAM_WEBHOOK_SECRET_TOKEN`, alongside
+the existing five `SHEETS_*` variables — same "app fails to start until set"
+behavior, same `deploy/sheets-env.yaml`-style file for Cloud Run (or that
+file is renamed/extended to cover both integrations — left to the
+implementation plan).
 
 ## Reply messages
 
@@ -138,8 +151,12 @@ extended to cover both integrations — left to the implementation plan).
 
 ## Error handling
 
+- An invalid or missing `X-Telegram-Bot-Api-Secret-Token` header short-circuits
+  the request with `401 Unauthorized` before any parsing or logging — this
+  is the one path that does not return `200 OK`, since it's not a real
+  Telegram delivery.
 - `TelegramWebhookController` wraps the entire per-update processing (steps
-  6-10 above) in a single try/catch. Any exception is logged at `error`
+  7-11 above) in a single try/catch. Any exception is logged at `error`
   level with the chat id and update id as context, answered with the
   generic failure reply, and swallowed — never propagated as a non-2xx
   response.
@@ -166,12 +183,13 @@ None. `RestClient` and Jackson are already available transitively via
   `SheetRowAppender.appendRow` and returns `OcrResponse` exactly as before;
   behavior is unchanged, only the internal wiring moves.
 - **`TelegramWebhookControllerTest`** (new, MockMvc) — with `TelegramClient`,
-  `ReceiptExtractionService`, and `SheetRowAppender` mocked, covers: photo
-  with caption (caption wins), photo without caption (OCR message used), no
-  photo (error reply, no sheet append), wrong chat id (no reply, no
-  processing), no `message` on the update (no reply), and an exception from
-  `ReceiptExtractionService` or `TelegramClient` (generic error reply, `200
-  OK` still returned).
+  `ReceiptExtractionService`, and `SheetRowAppender` mocked, covers: missing/
+  wrong `X-Telegram-Bot-Api-Secret-Token` header (`401`, nothing else
+  invoked), photo with caption (caption wins), photo without caption (OCR
+  message used), no photo (error reply, no sheet append), wrong chat id (no
+  reply, no processing), no `message` on the update (no reply), and an
+  exception from `ReceiptExtractionService` or `TelegramClient` (generic
+  error reply, `200 OK` still returned).
 - **`TelegramClientTest`** (new) — verifies request construction/response
   parsing for `getFilePath`, `downloadFile`, and `sendMessage` against a
   mocked HTTP layer (e.g. `RestClient` built on `MockRestServiceServer` or
