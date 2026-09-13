@@ -116,7 +116,7 @@ No new automated unit tests — this is build/infrastructure tooling, not applic
 
 The highest-risk part is already verified, outside Docker: the spike (see "Context" above) proved GraalVM native-image + Tess4J/JNA + a real Tesseract OCR call works end-to-end with correct output.
 
-**Not yet verified** (same gap as the existing deployment spec, which also never completed its Docker verification step): an actual `docker build .` of the new Dockerfile, and the real `gcloud run deploy --source .` run. Both require a Docker-capable / GCP-authenticated machine, which this sandbox is not. Both must be run before relying on this in production.
+**Not yet verified** (same gap as the existing deployment spec, which also never completed its Docker verification step): an actual `docker build .` of the new Dockerfile; a container-run OCR request against the resulting image; a real (non-dummy-credentialed) Sheets append; a real Telegram photo message end-to-end; and the real `gcloud run deploy --source .` run. These require a Docker-capable / GCP-authenticated machine, which this sandbox is not. All of these must be run before relying on this in production.
 
 ## Documentation
 
