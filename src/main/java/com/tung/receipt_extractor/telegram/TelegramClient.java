@@ -2,6 +2,7 @@ package com.tung.receipt_extractor.telegram;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -11,6 +12,7 @@ import java.net.URI;
 import java.util.Map;
 
 @Service
+@RegisterReflectionForBinding({TelegramClient.TelegramFileResponse.class, TelegramClient.TelegramFile.class})
 public class TelegramClient {
 
     private static final String TELEGRAM_API_BASE_URL = "https://api.telegram.org";
