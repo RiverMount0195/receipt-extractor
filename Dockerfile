@@ -13,5 +13,5 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=build /app/src/main/resources/tessdata /app/tessdata
 ENV OCR_TESSDATA_PATH=/app/tessdata
-COPY --from=build /app/build/native/nativeCompile/receipt-extractor /app/receipt-extractor
+COPY --from=build /app/build/native/nativeCompile/ /app/
 ENTRYPOINT ["/app/receipt-extractor"]
