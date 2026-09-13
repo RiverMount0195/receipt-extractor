@@ -44,4 +44,5 @@ config/*
 !config/*.example
 
 ### Deploy secrets ###
-deploy/sheets-env.yaml
+deploy/*
+!deploy/*.example

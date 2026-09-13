@@ -27,7 +27,7 @@ Use the Gradle wrapper (`./gradlew`), not a system-installed Gradle.
 ## OCR text extraction
 
 - Endpoint: `POST /api/ocr/extract` — multipart file upload, field name `file`, accepts `image/jpeg` or `image/png`. Returns `{"text": "..."}` on success.
-- Config properties (in `application.yml`): `ocr.tessdata-path` (default `src/main/resources/tessdata`) and `ocr.languages` (default `vie+eng`).
+- Config properties (in `application.yml`): `ocr.tessdata-path` (default `src/main/resources/tessdata`, a local-dev filesystem path — the deployed container overrides this via the `OCR_TESSDATA_PATH` env var, since Tesseract can't read the `.traineddata` files from inside the jar) and `ocr.languages` (default `vie+eng`).
 - Native library prerequisite: this uses Tess4J, which wraps system-installed Tesseract/Leptonica shared libraries via JNA — it does not bundle them. Install the dev packages before building/running/testing:
   - Fedora: `sudo dnf install tesseract-devel leptonica-devel`
   - Debian/Ubuntu: `sudo apt-get install libtesseract-dev libleptonica-dev`

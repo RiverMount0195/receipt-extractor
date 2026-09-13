@@ -9,7 +9,7 @@ Approved (in chat), pending spec review.
 The receipt-extractor app currently only runs locally via `./gradlew bootRun`. There is no Dockerfile, container image, or cloud deployment configuration anywhere in the repo. This spec covers deploying it to Google Cloud for the first time.
 
 Two prerequisites already in place:
-- `.traineddata` OCR model files are bundled under `src/main/resources/tessdata` (4.5MB total), so they ship inside the fat jar automatically — no separate download step is needed at deploy or runtime.
+- `.traineddata` OCR model files are bundled under `src/main/resources/tessdata` (4.5MB total) and already checked into the repo — no separate download step is needed. However, they ship *inside* the fat jar (at `BOOT-INF/classes/tessdata/`), and Tesseract's native layer cannot read a path inside a jar — it needs a real directory on disk. The Dockerfile must copy the `tessdata` directory into the runtime image at a real filesystem path and point `OCR_TESSDATA_PATH` at it (see "Dockerfile" below); without this, the container boots fine but every OCR request fails.
 - Google Sheets credentials are read from 5 environment variables (`SHEETS_CLIENT_ID`, `SHEETS_CLIENT_SECRET`, `SHEETS_REFRESH_TOKEN`, `SHEETS_SPREADSHEET_ID`, `SHEETS_SHEET_NAME`) rather than a file, as of the preceding change in this repo — this determines how secrets are wired into the cloud environment (see "Secrets" below).
 
 ## Goals
@@ -34,8 +34,8 @@ The service is deployed with `--no-allow-unauthenticated`, so Cloud Run's IAM la
 
 Multi-stage build:
 
-1. **Build stage** — a JDK 25 image (e.g. `eclipse-temurin:25-jdk`; confirm the exact published tag at implementation time, since Java 25 is newly released) runs `./gradlew bootJar` to produce the executable jar. Gradle's dependency cache is not persisted between builds (Cloud Build gives each build a clean environment); this is acceptable for a manually-triggered deploy and not worth optimizing for now.
-2. **Runtime stage** — a matching JRE 25 image, with `libtesseract-dev` and `libleptonica-dev` installed via `apt-get` (the same packages CLAUDE.md already documents for local Fedora/Debian dev setups, reused here for consistency and to guarantee the `.so` files Tess4J's JNA binding needs at runtime are present). Copies the jar from the build stage and runs it with `java -jar`.
+1. **Build stage** — a JDK 25 image (e.g. `eclipse-temurin:25-jdk`; confirm the exact published tag at implementation time, since Java 25 is newly released) runs `./gradlew bootJar` to produce the executable jar. Gradle's dependency cache is not persisted between builds (Cloud Build gives each build a clean environment); this is acceptable for a manually-triggered deploy and not worth optimizing for now. `bootJar` does not depend on `test`, so the build stage does not run the test suite — no tests gate a Cloud Run deploy. This is a deliberate choice for fast builds (this is a manual, human-run deploy per the Goals/Non-goals above, not a CI pipeline), not an oversight; `./gradlew test` is still run separately as part of normal development.
+2. **Runtime stage** — a matching JRE 25 image, with `libtesseract-dev` and `libleptonica-dev` installed via `apt-get` (the same packages CLAUDE.md already documents for local Fedora/Debian dev setups, reused here for consistency and to guarantee the `.so` files Tess4J's JNA binding needs at runtime are present). Also copies the `tessdata` directory from the build stage's source tree (`/app/src/main/resources/tessdata`) into a real directory in the runtime image (`/app/tessdata`) and sets `ENV OCR_TESSDATA_PATH=/app/tessdata`, since the `.traineddata` files packaged inside the fat jar are not readable by Tesseract's native layer (see "Context" above). This relies on Spring's relaxed environment-variable binding to override `ocr.tessdata-path` — the same mechanism already used for the `SHEETS_*` vars. Copies the jar from the build stage and runs it with `java -jar`.
 
 A `.dockerignore` file excludes `build/`, `.gradle/`, `.git/`, and `config/` from the build context sent to Cloud Build.
 
@@ -84,9 +84,12 @@ gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregi
      --source . \
      --region <REGION> \
      --no-allow-unauthenticated \
+     --memory=1Gi \
      --env-vars-file deploy/sheets-env.yaml
    ```
-   This builds the image from the Dockerfile via Cloud Build, pushes it to Artifact Registry, and creates a new Cloud Run revision, printing the service URL on success.
+   This builds the image from the Dockerfile via Cloud Build, pushes it to Artifact Registry, and creates a new Cloud Run revision, printing the service URL on success. `--memory=1Gi` raises the container's memory above Cloud Run's 512 MiB default, which is likely insufficient for a JVM plus native Tesseract image decoding plus the ~4.1MB `eng.traineddata` model — without it, the symptom would be an intermittent 503 ("Memory limit of 512 MiB exceeded") that's easy to mistake for an unrelated failure.
+
+   Note: `--source .` uses `.gcloudignore`, not `.dockerignore`, to decide what's sent to Cloud Build. If no `.gcloudignore` exists yet, `gcloud` auto-generates one on this first deploy (which will show up as a new untracked file in the repo) — its default correctly excludes secrets via `#!include:.gitignore`, but don't be surprised to see it appear.
 
 **Verify:**
 
@@ -113,6 +116,8 @@ gcloud run services add-iam-policy-binding receipt-extractor \
 Deployment is infrastructure, not application logic, so no new automated tests are added. Verification instead happens by:
 1. Building the Dockerfile locally (`docker build .`) and running the resulting image (`docker run`), confirming the app starts and the OCR endpoint responds to a local `curl`, before ever pushing to Cloud Run.
 2. The manual `curl` verification step in the deployment procedure above, once actually deployed.
+
+**Status: step 1 has NOT been performed.** Docker is not installed in the sandbox this branch was developed in, so no `docker build`/`docker run`/`curl` cycle has actually been run against the built image — the Dockerfile and its tessdata-copying fix were verified only by structural review (see the Dockerfile section above) and by `./gradlew bootJar`/`./gradlew test` succeeding. This step MUST be run on a Docker-capable machine before the first real `gcloud run deploy`. It is also the acceptance test that would have caught (and, going forward, would catch a regression of) the tessdata-in-jar bug described in "Context" above: a `docker run` + `curl` against `/api/ocr/extract` that returns actual extracted text (not a 500) is the real signal that OCR works in the container, independent of any code review.
 
 ## Documentation
 
