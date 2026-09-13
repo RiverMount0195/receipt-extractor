@@ -6,7 +6,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
 
@@ -15,6 +17,8 @@ public class SheetRowAppender {
 
     private static final Logger log = LoggerFactory.getLogger(SheetRowAppender.class);
     private static final String VALUE_INPUT_OPTION = "USER_ENTERED";
+    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final Sheets sheetsClient;
     private final SheetsProperties sheetsProperties;
@@ -29,7 +33,8 @@ public class SheetRowAppender {
             Object bankSourceValue = Objects.requireNonNullElse(bankSource, "");
             Object amountValue = amount == null ? "" : amount;
             Object messageValue = Objects.requireNonNullElse(message, "");
-            List<Object> row = List.of(bankSourceValue, amountValue, messageValue, Instant.now().toString());
+            String timestamp = ZonedDateTime.now(VIETNAM_ZONE).format(TIMESTAMP_FORMATTER);
+            List<Object> row = List.of(bankSourceValue, amountValue, messageValue, timestamp);
             ValueRange body = new ValueRange().setValues(List.of(row));
 
             sheetsClient.spreadsheets().values()
