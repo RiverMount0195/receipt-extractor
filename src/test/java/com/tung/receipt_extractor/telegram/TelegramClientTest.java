@@ -8,6 +8,7 @@ import org.springframework.web.client.RestClient;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.HttpMethod.POST;
@@ -69,6 +70,9 @@ class TelegramClientTest {
 
         assertFalse(exception.getMessage().contains(BOT_TOKEN),
                 "Exception message should not contain the raw bot token: " + exception.getMessage());
+        assertNull(exception.getCause(),
+                "Exception must not carry the original, unredacted exception as its cause, "
+                        + "since logging the full throwable (not just getMessage()) would leak the token");
         server.verify();
     }
 

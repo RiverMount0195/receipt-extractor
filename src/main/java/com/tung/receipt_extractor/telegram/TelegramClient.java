@@ -69,7 +69,7 @@ public class TelegramClient {
     private RuntimeException redacted(RestClientException e) {
         String message = e.getMessage();
         String redactedMessage = message == null ? null : message.replace(botToken, "<redacted>");
-        return new RuntimeException(redactedMessage, e);
+        return new RuntimeException(redactedMessage);
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
