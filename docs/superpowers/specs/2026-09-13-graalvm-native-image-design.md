@@ -55,7 +55,7 @@ plugins {
 
 This provides the `nativeCompile` task and wires in Spring's AOT processing automatically. No toolchain/vendor pinning is needed — confirmed in the spike, Gradle just uses whichever JDK 25 it's currently running under, and the Docker build stage's base image supplies GraalVM for that. Nothing else in `build.gradle` changes.
 
-`./gradlew bootRun`, `./gradlew test`, and `./gradlew build` are unaffected and keep using the regular (non-GraalVM) JDK for local dev — `nativeCompile` is only invoked inside the Docker build stage.
+`./gradlew bootRun` and `./gradlew test` are unaffected and keep using the regular (non-GraalVM) JDK for local dev — `nativeCompile` is only invoked inside the Docker build stage. (`./gradlew build`/`bootJar` do run Spring's AOT processing as part of the regular JDK build, same as before; see the note on directory naming below for a packaging wrinkle this caused.)
 
 ## Reachability metadata (Tess4J/JNA config)
 
@@ -64,8 +64,10 @@ Spring-managed code gets its native-image reflection hints automatically from Sp
 That config is checked in at:
 
 ```
-src/main/resources/META-INF/native-image/com.tung/receipt-extractor/reachability-metadata.json
+src/main/resources/META-INF/native-image/com.tung/receipt-extractor-tess4j/reachability-metadata.json
 ```
+
+Note this uses `receipt-extractor-tess4j`, not the app's own group:artifact (`com.tung/receipt-extractor`). The spike discarded all its experimental changes afterward, so it never exercised a second `bootJar` run with the config already checked in. Discovered while implementing this spec: Spring's AOT processing (wired into `bootJar` by the native-image plugin) generates its own file at exactly `META-INF/native-image/com.tung/receipt-extractor/reachability-metadata.json` at build time — using that same path for the checked-in file makes `bootJar`/`build` fail with a Gradle "duplicate entry, no duplicate handling strategy" error, since two different source files would land at the same jar entry. Spring's generated file is substantial (hundreds of reflection entries covering logback, the Google API clients, etc.), not something safe to silently drop via a `duplicatesStrategy`, so the fix is a non-colliding directory rather than picking a winner. native-image discovers and merges metadata from every `META-INF/native-image/**/reachability-metadata.json` on the classpath regardless of the group/artifact directory name (confirmed by the dozens of per-library directories the native-build-tools plugin already collects under `build/native-reachability-metadata/`), so this has no effect on what native-image sees at `nativeCompile` time.
 
 A new script, `scripts/regenerate-native-image-config.sh`, automates regenerating it:
 

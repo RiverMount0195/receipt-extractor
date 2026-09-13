@@ -13,7 +13,15 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 CONFIG_OUTPUT_DIR="$(mktemp -d)"
-TARGET_DIR="$REPO_ROOT/src/main/resources/META-INF/native-image/com.tung/receipt-extractor"
+# Deliberately NOT "com.tung/receipt-extractor" (the app's own group:artifact):
+# Spring's AOT processing (wired into bootJar) generates its own
+# META-INF/native-image/com.tung/receipt-extractor/reachability-metadata.json
+# at build time. Using that exact path here would make bootJar fail with a
+# "duplicate entry" error once this file is checked in. native-image merges
+# metadata from every META-INF/native-image/**/reachability-metadata.json on
+# the classpath regardless of the group/artifact directory name, so a
+# distinct, non-colliding directory works just as well.
+TARGET_DIR="$REPO_ROOT/src/main/resources/META-INF/native-image/com.tung/receipt-extractor-tess4j"
 
 echo "Building bootJar (with AOT processing)..."
 ./gradlew bootJar --no-daemon -q
@@ -29,6 +37,7 @@ echo "Starting app under native-image-agent..."
 "$GRAAL_HOME/bin/java" -agentlib:native-image-agent=config-output-dir="$CONFIG_OUTPUT_DIR" \
   -jar "$JAR_PATH" > /tmp/regen-native-config-app.log 2>&1 &
 APP_PID=$!
+trap 'kill -TERM "$APP_PID" 2>/dev/null || true' EXIT
 
 echo "Waiting for app to start..."
 for i in $(seq 1 30); do
