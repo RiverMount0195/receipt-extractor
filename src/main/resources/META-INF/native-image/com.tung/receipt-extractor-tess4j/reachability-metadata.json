@@ -233,7 +233,7 @@
         {
           "name": "setAuthorization",
           "parameterTypes": [
-            "java.util.List"
+            "java.lang.String"
           ]
         },
         {
@@ -647,6 +647,78 @@
         {
           "name": "<init>",
           "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.imageio.plugins.jpeg.JPEGImageReader",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "acceptPixels",
+          "parameterTypes": [
+            "int",
+            "boolean"
+          ]
+        },
+        {
+          "name": "passComplete",
+          "parameterTypes": []
+        },
+        {
+          "name": "passStarted",
+          "parameterTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "pushBack",
+          "parameterTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "readInputData",
+          "parameterTypes": [
+            "byte[]",
+            "int",
+            "int"
+          ]
+        },
+        {
+          "name": "setImageData",
+          "parameterTypes": [
+            "int",
+            "int",
+            "int",
+            "int",
+            "int",
+            "byte[]"
+          ]
+        },
+        {
+          "name": "skipInputBytes",
+          "parameterTypes": [
+            "long"
+          ]
+        },
+        {
+          "name": "skipPastImage",
+          "parameterTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "warningOccurred",
+          "parameterTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "warningWithMessage",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
         }
       ]
     },
@@ -1202,6 +1274,9 @@
       "type": "com.tung.receipt_extractor.sheets.SheetsProperties"
     },
     {
+      "type": "com.tung.receipt_extractor.telegram.TelegramChat"
+    },
+    {
       "type": "com.tung.receipt_extractor.telegram.TelegramClient",
       "methods": [
         {
@@ -1212,6 +1287,12 @@
           ]
         }
       ]
+    },
+    {
+      "type": "com.tung.receipt_extractor.telegram.TelegramClient$TelegramFile"
+    },
+    {
+      "type": "com.tung.receipt_extractor.telegram.TelegramClient$TelegramFileResponse"
     },
     {
       "type": "com.tung.receipt_extractor.telegram.TelegramConfig",
@@ -1279,7 +1360,16 @@
       ]
     },
     {
+      "type": "com.tung.receipt_extractor.telegram.TelegramMessage"
+    },
+    {
+      "type": "com.tung.receipt_extractor.telegram.TelegramPhotoSize"
+    },
+    {
       "type": "com.tung.receipt_extractor.telegram.TelegramProperties"
+    },
+    {
+      "type": "com.tung.receipt_extractor.telegram.TelegramUpdate"
     },
     {
       "type": "com.tung.receipt_extractor.telegram.TelegramWebhookController",
@@ -2203,6 +2293,27 @@
       ]
     },
     {
+      "type": "javax.imageio.plugins.jpeg.JPEGHuffmanTable",
+      "jniAccessible": true,
+      "fields": [
+        {
+          "name": "lengths"
+        },
+        {
+          "name": "values"
+        }
+      ]
+    },
+    {
+      "type": "javax.imageio.plugins.jpeg.JPEGQTable",
+      "jniAccessible": true,
+      "fields": [
+        {
+          "name": "qTable"
+        }
+      ]
+    },
+    {
       "type": "javax.imageio.spi.ImageReaderSpi"
     },
     {
@@ -2642,6 +2753,12 @@
     },
     {
       "type": "org.springframework.aot.hint.annotation.Reflective"
+    },
+    {
+      "type": "org.springframework.aot.hint.annotation.RegisterReflection"
+    },
+    {
+      "type": "org.springframework.aot.hint.annotation.RegisterReflectionForBinding"
     },
     {
       "type": "org.springframework.beans.factory.Aware"
@@ -6229,6 +6346,15 @@
     },
     {
       "glob": "org/apache/tomcat/websocket/server/LocalStrings.properties"
+    },
+    {
+      "glob": "org/springframework/aot/hint/annotation/Reflective.class"
+    },
+    {
+      "glob": "org/springframework/aot/hint/annotation/RegisterReflection.class"
+    },
+    {
+      "glob": "org/springframework/aot/hint/annotation/RegisterReflectionForBinding.class"
     },
     {
       "glob": "org/springframework/beans/factory/Aware.class"
