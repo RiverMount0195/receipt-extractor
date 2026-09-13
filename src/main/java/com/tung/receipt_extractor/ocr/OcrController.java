@@ -4,6 +4,7 @@ import com.tung.receipt_extractor.sheets.SheetRowAppender;
 import net.sourceforge.tess4j.TesseractException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,6 +17,7 @@ import java.util.Map;
 import java.util.Set;
 
 @RestController
+@RegisterReflectionForBinding(OcrResponse.class)
 public class OcrController {
 
     private static final Logger log = LoggerFactory.getLogger(OcrController.class);
