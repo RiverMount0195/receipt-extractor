@@ -42,3 +42,6 @@ out/
 ### Secrets ###
 config/*
 !config/*.example
+
+### Deploy secrets ###
+deploy/sheets-env.yaml
