@@ -91,7 +91,7 @@ Answer "n" when asked to set it as default — the regen script invokes it by it
 Multi-stage build, replacing the current JDK/JRE-based one:
 
 1. **Build stage** — `FROM ghcr.io/graalvm/native-image-community:25i3` (GraalVM CE with `native-image` preinstalled). Runs `./gradlew nativeCompile`, producing `build/native/nativeCompile/receipt-extractor`.
-2. **Runtime stage** — `FROM debian:bookworm-slim`. Installs `libtesseract5 libleptonica5` via `apt-get` (runtime-only shared libraries — no `-dev`/header packages needed, since nothing compiles against them; Tess4J's JNA layer only needs the `.so` files present for `dlopen`). Copies the `tessdata` directory (same as today, since Tesseract's native layer still can't read a path inside a jar/executable) to `/app/tessdata` and sets `OCR_TESSDATA_PATH=/app/tessdata`. Copies the native executable from the build stage. `ENTRYPOINT` runs the executable directly — no JVM, no `java -jar`, in the runtime image at all.
+2. **Runtime stage** — `FROM debian:bookworm-slim`. Installs `libtesseract5 liblept5` via `apt-get` (runtime-only shared libraries — no `-dev`/header packages needed, since nothing compiles against them; Tess4J's JNA layer only needs the `.so` files present for `dlopen`). Copies the `tessdata` directory (same as today, since Tesseract's native layer still can't read a path inside a jar/executable) to `/app/tessdata` and sets `OCR_TESSDATA_PATH=/app/tessdata`. Copies the native executable from the build stage. `ENTRYPOINT` runs the executable directly — no JVM, no `java -jar`, in the runtime image at all.
 
 `.dockerignore` is unchanged.
 

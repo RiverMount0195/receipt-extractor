@@ -8,7 +8,7 @@ RUN ./gradlew nativeCompile --no-daemon
 
 FROM debian:bookworm-slim
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libtesseract5 libleptonica5 \
+    && apt-get install -y --no-install-recommends libtesseract5 liblept5 \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/src/main/resources/tessdata /app/tessdata
