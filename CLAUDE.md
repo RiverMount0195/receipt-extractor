@@ -40,9 +40,19 @@ Use the Gradle wrapper (`./gradlew`), not a system-installed Gradle.
 - If any of these is unset, the whole app fails to start with a placeholder-resolution error — this is expected until they're set; it is not required for running the test suite (tests set dummy values via `@TestPropertySource`).
 - Do not enable `com.google.api.client.http` logging at `CONFIG` level or above in production — it logs full HTTP request bodies, which for the token-refresh endpoint includes the client secret and refresh token in plaintext.
 
+## Telegram webhook integration
+
+- Endpoint: `POST /api/telegram-webhook` — receives a Telegram Bot API `Update` JSON payload. The Telegram bot itself (webhook registration, bot token issuance) is configured outside this repo.
+- Every request must carry the header `X-Telegram-Bot-Api-Secret-Token` matching the configured `telegram.webhook-secret-token`, or the endpoint returns `401` without parsing or logging the body. This is the value passed as `secret_token` when the webhook was registered via Telegram's `setWebhook` call.
+- The raw JSON payload is logged at `info` level for every request that passes the secret-token check — useful for debugging webhook behavior.
+- Only messages from the chat id configured in `telegram.allowed-chat-id` are processed; messages from any other chat are silently ignored (`200 OK`, no reply).
+- A message must include a photo. The largest resolution is downloaded via Telegram's `getFile`/file-download APIs, OCR'd with the same pipeline as `/api/ocr/extract` (`ReceiptExtractionService`), and appended to the same Google Sheet as `/api/ocr/extract`. If the message has a non-blank caption, the caption overrides the OCR-derived message for that row.
+- The bot replies in the chat with a confirmation summary on success, or a short error message if there's no photo or processing fails. The webhook always returns `200 OK` (except the secret-token check, which returns `401`) so Telegram never retry-storms it.
+- Config properties (in `application.yml`): `telegram.bot-token`, `telegram.allowed-chat-id`, `telegram.webhook-secret-token`, bound from `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_CHAT_ID`, `TELEGRAM_WEBHOOK_SECRET_TOKEN`. Same as the Sheets properties, the app fails to start if any is unset; not required for running the test suite (tests set dummy values via `@TestPropertySource`).
+
 ## Deploying to Google Cloud
 
 - Deploys as a container to Cloud Run via a multi-stage `Dockerfile` (JDK 25 build stage, JRE 25 + Tesseract/Leptonica runtime stage) checked into the repo root. `gcloud run deploy --source .` builds the image with Cloud Build and pushes it to an auto-created Artifact Registry repo — no manual registry setup needed.
 - The service is deployed with `--no-allow-unauthenticated`: only callers with a valid Google identity token and the `roles/run.invoker` role can reach it. This app handles personal financial data (receipt images, bank transfer details) and has no endpoint-level auth of its own.
-- Secrets are passed as plain Cloud Run environment variables (not Secret Manager — see the design spec for the trade-off) via `--env-vars-file`. Copy `deploy/sheets-env.yaml.example` to `deploy/sheets-env.yaml` (gitignored) and fill in real values before deploying.
+- Secrets are passed as plain Cloud Run environment variables (not Secret Manager — see the design spec for the trade-off) via `--env-vars-file`. Copy `deploy/sheets-env.yaml.example` to `deploy/sheets-env.yaml` (gitignored) and fill in real values before deploying — this covers both the Sheets and Telegram integration variables.
 - One-time setup and the full step-by-step deploy/verify/redeploy procedure: see `docs/superpowers/specs/2026-09-13-google-cloud-deployment-design.md`.
