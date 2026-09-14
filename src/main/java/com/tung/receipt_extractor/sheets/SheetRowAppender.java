@@ -173,8 +173,15 @@ public class SheetRowAppender {
         }
 
         insertDateRowByCopyingTemplate(spreadsheetId, snapshot.sheetId(), templateRowIndex, insertionIndex);
-        writeDateColumn(spreadsheetId, sheetName, insertionIndex, today);
-        insertRowAt(spreadsheetId, snapshot.sheetId(), insertionIndex + 1, amount, message);
+        try {
+            writeDateColumn(spreadsheetId, sheetName, insertionIndex, today);
+            insertRowAt(spreadsheetId, snapshot.sheetId(), insertionIndex + 1, amount, message);
+        } catch (Exception e) {
+            log.error("Created new date row for {} in sheet [spreadsheetId={}, sheetName={}] at row {} but failed "
+                    + "to finish writing it - the date text and/or the entry may be missing; manual reconciliation "
+                    + "needed", today, spreadsheetId, sheetName, insertionIndex + 1, e);
+            throw e;
+        }
     }
 
     private void insertDateRowByCopyingTemplate(String spreadsheetId, int sheetId, int templateRowIndex,

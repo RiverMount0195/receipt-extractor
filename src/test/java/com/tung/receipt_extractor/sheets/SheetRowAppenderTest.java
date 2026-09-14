@@ -310,6 +310,51 @@ class SheetRowAppenderTest {
     }
 
     @Test
+    void skipsNonDateRowsWhenLocatingTemplateAndInsertionPoint() throws Exception {
+        Sheets sheetsClient = mock(Sheets.class);
+        Sheets.Spreadsheets spreadsheets = mock(Sheets.Spreadsheets.class);
+        Sheets.Spreadsheets.Get get = mock(Sheets.Spreadsheets.Get.class);
+        Sheets.Spreadsheets.Values values = mock(Sheets.Spreadsheets.Values.class);
+        Sheets.Spreadsheets.Values.Update update = mock(Sheets.Spreadsheets.Values.Update.class);
+        Sheets.Spreadsheets.BatchUpdate batchUpdate = mock(Sheets.Spreadsheets.BatchUpdate.class);
+
+        when(sheetsClient.spreadsheets()).thenReturn(spreadsheets);
+        when(spreadsheets.get(SPREADSHEET_ID)).thenReturn(get);
+        when(get.setRanges(any())).thenReturn(get);
+        when(get.setIncludeGridData(true)).thenReturn(get);
+        when(get.setFields(anyString())).thenReturn(get);
+        // rows: 14/12 (index 0) | non-date text (index 1, must be skipped) | 16/12 (index 2)
+        RowData nonDateRow = new RowData().setValues(List.of(new CellData().setFormattedValue("some entry")));
+        when(get.execute()).thenReturn(spreadsheetWithRows(dateRow("14/12"), nonDateRow, dateRow("16/12")));
+        when(spreadsheets.batchUpdate(eq(SPREADSHEET_ID), any(BatchUpdateSpreadsheetRequest.class)))
+                .thenReturn(batchUpdate);
+        when(batchUpdate.execute()).thenReturn(new BatchUpdateSpreadsheetResponse());
+        when(spreadsheets.values()).thenReturn(values);
+        when(values.update(eq(SPREADSHEET_ID), anyString(), any(ValueRange.class))).thenReturn(update);
+        when(update.setValueInputOption("USER_ENTERED")).thenReturn(update);
+        when(update.execute()).thenReturn(new UpdateValuesResponse());
+
+        SheetRowAppender appender = new SheetRowAppender(
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+
+        appender.insertRow(50000L, "between message");
+
+        ArgumentCaptor<BatchUpdateSpreadsheetRequest> batchCaptor =
+                ArgumentCaptor.forClass(BatchUpdateSpreadsheetRequest.class);
+        verify(spreadsheets, times(2))
+                .batchUpdate(eq(SPREADSHEET_ID), batchCaptor.capture());
+
+        List<Request> dateRowRequests = batchCaptor.getAllValues().get(0).getRequests();
+        // The non-date row at index 1 must not be mistaken for the insertion point or the
+        // template: new date row still lands at index 2 (right before "16/12"), copying
+        // "14/12" (index 0), unaffected by the row in between.
+        assertEquals(2, dateRowRequests.get(0).getInsertDimension().getRange().getStartIndex());
+        CopyPasteRequest copyPaste = dateRowRequests.get(1).getCopyPaste();
+        assertEquals(0, copyPaste.getSource().getStartRowIndex());
+        assertEquals(2, copyPaste.getDestination().getStartRowIndex());
+    }
+
+    @Test
     void insertsMissingDateRowBeforeAllExistingDatesWhenTodayIsEarliest() throws Exception {
         Sheets sheetsClient = mock(Sheets.class);
         Sheets.Spreadsheets spreadsheets = mock(Sheets.Spreadsheets.class);
