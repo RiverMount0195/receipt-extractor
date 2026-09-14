@@ -11,9 +11,18 @@ import org.springframework.context.annotation.Configuration;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.time.Clock;
+import java.time.ZoneId;
 
 @Configuration
 public class SheetsConfig {
+
+    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+
+    @Bean
+    public Clock clock() {
+        return Clock.system(VIETNAM_ZONE);
+    }
 
     @Bean
     public Sheets sheetsClient(
@@ -36,9 +45,7 @@ public class SheetsConfig {
     }
 
     @Bean
-    public SheetsProperties sheetsProperties(
-            @Value("${sheets.spreadsheet-id}") String spreadsheetId,
-            @Value("${sheets.sheet-name}") String sheetName) {
-        return new SheetsProperties(spreadsheetId, sheetName);
+    public SheetsProperties sheetsProperties(@Value("${sheets.spreadsheet-id}") String spreadsheetId) {
+        return new SheetsProperties(spreadsheetId);
     }
 }

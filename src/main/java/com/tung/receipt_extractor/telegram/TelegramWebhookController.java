@@ -87,7 +87,7 @@ public class TelegramWebhookController {
                     ? message.caption()
                     : extracted.message();
 
-            sheetRowAppender.appendRow(extracted.bankSource(), extracted.amount(), finalMessage);
+            sheetRowAppender.insertRow(extracted.amount(), finalMessage);
 
             replySafely(chatId, buildConfirmationReply(extracted.bankSource(), extracted.amount(), finalMessage));
         } catch (Exception e) {

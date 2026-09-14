@@ -24,7 +24,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "sheets.client-secret=test-client-secret",
         "sheets.refresh-token=test-refresh-token",
         "sheets.spreadsheet-id=test-spreadsheet-id",
-        "sheets.sheet-name=Test",
         "telegram.bot-token=test-bot-token",
         "telegram.allowed-chat-id=123456789",
         "telegram.webhook-secret-token=test-secret"
