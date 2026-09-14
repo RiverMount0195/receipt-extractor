@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved (in chat), pending spec review.
+**Reverted.** Implemented and merged (#10–#13), but abandoned after three separate native-image-specific runtime crashes surfaced from real-world testing in sequence (missing sibling JDK libraries for AWT/ImageIO, missing JNI reflection metadata for the JPEG codec, and a Debian Leptonica package-naming mismatch) — see the three "Update" notes in the Testing section below for the full history. The Dockerfile was rolled back to the original JVM-based build (`eclipse-temurin`); see `docs/superpowers/specs/2026-09-13-google-cloud-deployment-design.md`, which is active again. The Gradle plugin, regeneration script, and checked-in reachability metadata are left in the repo unused (not deleted), in case native-image is revisited later — this spec is kept as a record of what was tried and why it didn't pan out, not as a description of current deployment behavior.
 
 ## Context
 

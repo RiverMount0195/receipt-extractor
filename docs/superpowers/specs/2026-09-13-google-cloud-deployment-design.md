@@ -2,9 +2,7 @@
 
 ## Status
 
-Approved (in chat), pending spec review.
-
-**Note:** the "Dockerfile" and "Testing" sections below describe the original JVM-based image. They are superseded by `docs/superpowers/specs/2026-09-13-graalvm-native-image-design.md`, which switches the image to a GraalVM native executable on `debian:bookworm-slim`. Everything else in this spec (architecture, secrets, deploy procedure) still applies.
+Approved (in chat), pending spec review. Active again — a later attempt to switch to a GraalVM native image (`docs/superpowers/specs/2026-09-13-graalvm-native-image-design.md`) was reverted after real-world testing surfaced repeated native-image-specific runtime crashes; the Dockerfile described below is what's actually deployed.
 
 ## Context
 
