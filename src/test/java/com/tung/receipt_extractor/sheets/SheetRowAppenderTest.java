@@ -170,6 +170,43 @@ class SheetRowAppenderTest {
     }
 
     @Test
+    void insertsDirectlyBelowDateRowWhenTheRowBelowIsAnotherDateWithNoEntriesYet() throws Exception {
+        Sheets sheetsClient = mock(Sheets.class);
+        Sheets.Spreadsheets spreadsheets = mock(Sheets.Spreadsheets.class);
+        Sheets.Spreadsheets.Get get = mock(Sheets.Spreadsheets.Get.class);
+        Sheets.Spreadsheets.BatchUpdate batchUpdate = mock(Sheets.Spreadsheets.BatchUpdate.class);
+
+        when(sheetsClient.spreadsheets()).thenReturn(spreadsheets);
+        when(spreadsheets.get(SPREADSHEET_ID)).thenReturn(get);
+        when(get.setRanges(any())).thenReturn(get);
+        when(get.setIncludeGridData(true)).thenReturn(get);
+        when(get.setFields(anyString())).thenReturn(get);
+        // "15/12" (index 1) has never had an entry, so it's immediately followed by "16/12"
+        // (index 2) with no spacer row in between at all - matches the real sheet layout
+        // for any date that hasn't been used yet.
+        when(get.execute()).thenReturn(spreadsheetWithRows(dateRow("14/12"), dateRow("15/12"), dateRow("16/12")));
+        when(spreadsheets.batchUpdate(eq(SPREADSHEET_ID), any(BatchUpdateSpreadsheetRequest.class)))
+                .thenReturn(batchUpdate);
+        when(batchUpdate.execute()).thenReturn(new BatchUpdateSpreadsheetResponse());
+
+        SheetRowAppender appender = new SheetRowAppender(
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID), FIXED_CLOCK);
+
+        appender.insertRow(125000L, "chuyen tien");
+
+        ArgumentCaptor<BatchUpdateSpreadsheetRequest> captor =
+                ArgumentCaptor.forClass(BatchUpdateSpreadsheetRequest.class);
+        verify(spreadsheets).batchUpdate(eq(SPREADSHEET_ID), captor.capture());
+
+        // Must land at index 2, directly below "15/12" and before "16/12" - not after
+        // "16/12" (which would happen if its date-header row were mistaken for an
+        // already-occupied entry row).
+        InsertDimensionRequest insertDimension = captor.getValue().getRequests().get(0).getInsertDimension();
+        assertEquals(2, insertDimension.getRange().getStartIndex());
+        assertEquals(3, insertDimension.getRange().getEndIndex());
+    }
+
+    @Test
     void leavesAmountCellBlankWhenAmountIsNull() throws Exception {
         Sheets sheetsClient = mock(Sheets.class);
         Sheets.Spreadsheets spreadsheets = mock(Sheets.Spreadsheets.class);

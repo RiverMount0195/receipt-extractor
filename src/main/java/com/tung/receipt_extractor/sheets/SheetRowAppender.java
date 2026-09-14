@@ -239,7 +239,9 @@ public class SheetRowAppender {
      * Each date row is followed by a template spacer row reserved for that day's entries.
      * Reuse it in place while it's blank; once it holds an entry, subsequent same-day
      * entries insert directly below the last one, so entries stack chronologically under
-     * the date.
+     * the date. A date with no entries yet has no spacer row at all - the row directly
+     * below it is simply the next date's header row - so that case is treated the same as
+     * there being no row below at all: insert a fresh row directly under today's date.
      */
     private void writeUnderDateRow(String spreadsheetId, String sheetName, SheetSnapshot snapshot,
             int dateRowIndex, Long amount, String message) throws Exception {
@@ -247,13 +249,22 @@ public class SheetRowAppender {
         List<RowData> rowData = snapshot.rowData();
         RowData belowRow = belowIndex < rowData.size() ? rowData.get(belowIndex) : null;
 
-        if (belowRow == null) {
+        if (belowRow == null || isDateRow(belowRow)) {
             insertRowAt(spreadsheetId, snapshot.sheetId(), belowIndex, amount, message);
         } else if (isRowEmpty(belowRow)) {
             updateRowInPlace(spreadsheetId, sheetName, belowIndex, amount, message);
         } else {
             insertRowAt(spreadsheetId, snapshot.sheetId(), belowIndex + 1, amount, message);
         }
+    }
+
+    private boolean isDateRow(RowData row) {
+        List<CellData> values = row.getValues();
+        if (values == null || values.isEmpty()) {
+            return false;
+        }
+        String text = values.get(0).getFormattedValue();
+        return text != null && !text.isEmpty();
     }
 
     private boolean isRowEmpty(RowData row) {
