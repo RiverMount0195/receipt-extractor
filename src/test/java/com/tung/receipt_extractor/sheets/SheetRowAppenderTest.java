@@ -40,7 +40,6 @@ import static org.mockito.Mockito.when;
 class SheetRowAppenderTest {
 
     private static final String SPREADSHEET_ID = "sheet-id-123";
-    private static final String SHEET_NAME = "Tháng 12";
     private static final String QUOTED_SHEET_NAME = "'Tháng 12'";
     private static final int SHEET_ID = 987;
     // Fixed at 2025-12-15T10:00:00+07:00, i.e. "today" is 15/12
@@ -70,7 +69,7 @@ class SheetRowAppenderTest {
         when(update.execute()).thenReturn(new UpdateValuesResponse());
 
         SheetRowAppender appender = new SheetRowAppender(
-                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID), FIXED_CLOCK);
 
         appender.insertRow(125000L, "chuyen tien");
 
@@ -111,7 +110,7 @@ class SheetRowAppenderTest {
         when(batchUpdate.execute()).thenReturn(new BatchUpdateSpreadsheetResponse());
 
         SheetRowAppender appender = new SheetRowAppender(
-                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID), FIXED_CLOCK);
 
         appender.insertRow(20000L, "second entry today");
 
@@ -157,7 +156,7 @@ class SheetRowAppenderTest {
         when(batchUpdate.execute()).thenReturn(new BatchUpdateSpreadsheetResponse());
 
         SheetRowAppender appender = new SheetRowAppender(
-                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID), FIXED_CLOCK);
 
         appender.insertRow(125000L, "chuyen tien");
 
@@ -190,7 +189,7 @@ class SheetRowAppenderTest {
         when(update.execute()).thenReturn(new UpdateValuesResponse());
 
         SheetRowAppender appender = new SheetRowAppender(
-                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID), FIXED_CLOCK);
 
         appender.insertRow(null, "no amount");
 
@@ -228,7 +227,7 @@ class SheetRowAppenderTest {
         when(update.execute()).thenReturn(new UpdateValuesResponse());
 
         SheetRowAppender appender = new SheetRowAppender(
-                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID), FIXED_CLOCK);
 
         appender.insertRow(50000L, "new date message");
 
@@ -292,7 +291,7 @@ class SheetRowAppenderTest {
         when(update.execute()).thenReturn(new UpdateValuesResponse());
 
         SheetRowAppender appender = new SheetRowAppender(
-                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID), FIXED_CLOCK);
 
         appender.insertRow(50000L, "between message");
 
@@ -335,7 +334,7 @@ class SheetRowAppenderTest {
         when(update.execute()).thenReturn(new UpdateValuesResponse());
 
         SheetRowAppender appender = new SheetRowAppender(
-                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID), FIXED_CLOCK);
 
         appender.insertRow(50000L, "between message");
 
@@ -379,7 +378,7 @@ class SheetRowAppenderTest {
         when(update.execute()).thenReturn(new UpdateValuesResponse());
 
         SheetRowAppender appender = new SheetRowAppender(
-                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID), FIXED_CLOCK);
 
         appender.insertRow(50000L, "earliest message");
 
@@ -419,7 +418,7 @@ class SheetRowAppenderTest {
         when(append.execute()).thenReturn(new AppendValuesResponse());
 
         SheetRowAppender appender = new SheetRowAppender(
-                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID), FIXED_CLOCK);
 
         appender.insertRow(50000L, "fallback message");
 
@@ -461,7 +460,7 @@ class SheetRowAppenderTest {
         when(append.execute()).thenReturn(new AppendValuesResponse());
 
         SheetRowAppender appender = new SheetRowAppender(
-                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID), FIXED_CLOCK);
 
         appender.insertRow(1000L, "message");
 
@@ -470,27 +469,27 @@ class SheetRowAppenderTest {
     }
 
     @Test
-    void escapesEmbeddedSingleQuoteInSheetName() throws Exception {
-        String sheetNameWithQuote = "O'Brien's Sheet";
-        String quotedRange = "'O''Brien''s Sheet'!A:G";
-
+    void computesSheetNameFromCurrentMonth() throws Exception {
         Sheets sheetsClient = mock(Sheets.class);
         Sheets.Spreadsheets spreadsheets = mock(Sheets.Spreadsheets.class);
         Sheets.Spreadsheets.Get get = mock(Sheets.Spreadsheets.Get.class);
 
         when(sheetsClient.spreadsheets()).thenReturn(spreadsheets);
         when(spreadsheets.get(SPREADSHEET_ID)).thenReturn(get);
-        when(get.setRanges(List.of(quotedRange))).thenReturn(get);
+        // FIXED_CLOCK is in December, so the sheet name must be computed as "Tháng 12",
+        // quoted for A1 notation since it contains a space - regardless of whatever
+        // sheet name SheetsProperties happens to carry (no longer used for this).
+        when(get.setRanges(List.of(QUOTED_SHEET_NAME + "!A:G"))).thenReturn(get);
         when(get.setIncludeGridData(true)).thenReturn(get);
         when(get.setFields(anyString())).thenReturn(get);
         when(get.execute()).thenReturn(spreadsheetWithRows(dateRow("1/11")));
 
         SheetRowAppender appender = new SheetRowAppender(
-                sheetsClient, new SheetsProperties(SPREADSHEET_ID, sheetNameWithQuote), FIXED_CLOCK);
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID), FIXED_CLOCK);
 
         appender.insertRow(1000L, "message");
 
-        verify(get).setRanges(List.of(quotedRange));
+        verify(get).setRanges(List.of(QUOTED_SHEET_NAME + "!A:G"));
     }
 
     @Test
@@ -502,7 +501,7 @@ class SheetRowAppenderTest {
         when(spreadsheets.get(SPREADSHEET_ID)).thenThrow(new IOException("boom"));
 
         SheetRowAppender appender = new SheetRowAppender(
-                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID), FIXED_CLOCK);
 
         assertDoesNotThrow(() -> appender.insertRow(1000L, "message"));
     }

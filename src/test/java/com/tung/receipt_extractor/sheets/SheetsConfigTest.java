@@ -21,9 +21,8 @@ class SheetsConfigTest {
     void buildsSheetsPropertiesFromCredentials() {
         SheetsConfig config = new SheetsConfig();
 
-        SheetsProperties sheetsProperties = config.sheetsProperties("test-spreadsheet-id", "Test");
+        SheetsProperties sheetsProperties = config.sheetsProperties("test-spreadsheet-id");
 
         assertEquals("test-spreadsheet-id", sheetsProperties.spreadsheetId());
-        assertEquals("Test", sheetsProperties.sheetName());
     }
 }

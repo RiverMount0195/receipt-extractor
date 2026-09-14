@@ -18,7 +18,6 @@ sheets:
   client-secret: ${SHEETS_CLIENT_SECRET}
   refresh-token: ${SHEETS_REFRESH_TOKEN}
   spreadsheet-id: ${SHEETS_SPREADSHEET_ID}
-  sheet-name: ${SHEETS_SHEET_NAME}
 
 telegram:
   bot-token: ${TELEGRAM_BOT_TOKEN}

@@ -55,6 +55,7 @@ public class SheetRowAppender {
     private static final String ROW_FIELDS_MASK = "sheets(properties(sheetId),data(rowData(values(formattedValue))))";
     private static final String COPY_PASTE_NORMAL = "PASTE_NORMAL";
     private static final int TRANSACTION_COLUMN_COUNT = 7; // A-G
+    private static final String SHEET_NAME_PREFIX = "Tháng ";
 
     private final Sheets sheetsClient;
     private final SheetsProperties sheetsProperties;
@@ -68,9 +69,10 @@ public class SheetRowAppender {
 
     public void insertRow(Long amount, String message) {
         String spreadsheetId = sheetsProperties.spreadsheetId();
-        String sheetName = sheetsProperties.sheetName();
+        ZonedDateTime now = ZonedDateTime.now(clock);
+        String sheetName = SHEET_NAME_PREFIX + now.getMonthValue();
         try {
-            String today = ZonedDateTime.now(clock).format(DATE_COLUMN_FORMATTER);
+            String today = now.format(DATE_COLUMN_FORMATTER);
             SheetSnapshot snapshot = fetchRowData(spreadsheetId, sheetName);
             int dateRowIndex = findDateRowIndex(snapshot.rowData(), today);
 

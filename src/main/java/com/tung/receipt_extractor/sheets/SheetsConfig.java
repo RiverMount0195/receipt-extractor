@@ -45,9 +45,7 @@ public class SheetsConfig {
     }
 
     @Bean
-    public SheetsProperties sheetsProperties(
-            @Value("${sheets.spreadsheet-id}") String spreadsheetId,
-            @Value("${sheets.sheet-name}") String sheetName) {
-        return new SheetsProperties(spreadsheetId, sheetName);
+    public SheetsProperties sheetsProperties(@Value("${sheets.spreadsheet-id}") String spreadsheetId) {
+        return new SheetsProperties(spreadsheetId);
     }
 }
