@@ -91,12 +91,19 @@ public class SheetRowAppender {
     }
 
     private SheetSnapshot fetchRowData(String spreadsheetId, String sheetName) throws Exception {
-        Spreadsheet spreadsheet = sheetsClient.spreadsheets()
-                .get(spreadsheetId)
-                .setRanges(List.of(quotedSheetName(sheetName) + "!A:G"))
-                .setIncludeGridData(true)
-                .setFields(ROW_FIELDS_MASK)
-                .execute();
+        String range = quotedSheetName(sheetName) + "!A:G";
+        Spreadsheet spreadsheet;
+        try {
+            spreadsheet = sheetsClient.spreadsheets()
+                    .get(spreadsheetId)
+                    .setRanges(List.of(range))
+                    .setIncludeGridData(true)
+                    .setFields(ROW_FIELDS_MASK)
+                    .execute();
+        } catch (Exception e) {
+            log.error("spreadsheets.get failed [spreadsheetId={}, range={}]", spreadsheetId, range, e);
+            throw e;
+        }
 
         Sheet sheet = spreadsheet.getSheets().get(0);
         int sheetId = sheet.getProperties().getSheetId();
@@ -220,7 +227,14 @@ public class SheetRowAppender {
         BatchUpdateSpreadsheetRequest body = new BatchUpdateSpreadsheetRequest()
                 .setRequests(List.of(insertRequest, copyRequest));
 
-        sheetsClient.spreadsheets().batchUpdate(spreadsheetId, body).execute();
+        try {
+            sheetsClient.spreadsheets().batchUpdate(spreadsheetId, body).execute();
+        } catch (Exception e) {
+            log.error("batchUpdate (insert+copy date row) failed [spreadsheetId={}, sheetId={}, "
+                            + "templateRowIndex={}, insertionIndex={}]",
+                    spreadsheetId, sheetId, adjustedTemplateRowIndex, insertionIndex, e);
+            throw e;
+        }
     }
 
     private void writeDateColumn(String spreadsheetId, String sheetName, int rowIndex, String dateText)
@@ -229,10 +243,15 @@ public class SheetRowAppender {
         String range = quotedSheetName(sheetName) + "!A" + sheetRowNumber;
         ValueRange body = new ValueRange().setValues(List.of(List.of(dateText)));
 
-        sheetsClient.spreadsheets().values()
-                .update(spreadsheetId, range, body)
-                .setValueInputOption(VALUE_INPUT_OPTION)
-                .execute();
+        try {
+            sheetsClient.spreadsheets().values()
+                    .update(spreadsheetId, range, body)
+                    .setValueInputOption(VALUE_INPUT_OPTION)
+                    .execute();
+        } catch (Exception e) {
+            log.error("values.update (date column) failed [spreadsheetId={}, range={}]", spreadsheetId, range, e);
+            throw e;
+        }
     }
 
     /**
@@ -301,7 +320,13 @@ public class SheetRowAppender {
         BatchUpdateSpreadsheetRequest body = new BatchUpdateSpreadsheetRequest()
                 .setRequests(List.of(insertRequest, updateRequest));
 
-        sheetsClient.spreadsheets().batchUpdate(spreadsheetId, body).execute();
+        try {
+            sheetsClient.spreadsheets().batchUpdate(spreadsheetId, body).execute();
+        } catch (Exception e) {
+            log.error("batchUpdate (insert row) failed [spreadsheetId={}, sheetId={}, insertIndex={}]",
+                    spreadsheetId, sheetId, insertIndex, e);
+            throw e;
+        }
     }
 
     private void updateRowInPlace(String spreadsheetId, String sheetName, int rowIndex, Long amount, String message)
@@ -310,10 +335,15 @@ public class SheetRowAppender {
         String range = quotedSheetName(sheetName) + "!D" + sheetRowNumber + ":G" + sheetRowNumber;
         ValueRange body = new ValueRange().setValues(List.of(transactionColumns(amount, message)));
 
-        sheetsClient.spreadsheets().values()
-                .update(spreadsheetId, range, body)
-                .setValueInputOption(VALUE_INPUT_OPTION)
-                .execute();
+        try {
+            sheetsClient.spreadsheets().values()
+                    .update(spreadsheetId, range, body)
+                    .setValueInputOption(VALUE_INPUT_OPTION)
+                    .execute();
+        } catch (Exception e) {
+            log.error("values.update (row in place) failed [spreadsheetId={}, range={}]", spreadsheetId, range, e);
+            throw e;
+        }
     }
 
     private RowData buildRowData(Long amount, String message) {
@@ -352,11 +382,17 @@ public class SheetRowAppender {
         row.add("");
         row.addAll(transactionColumns(amount, message));
         ValueRange body = new ValueRange().setValues(List.of(row));
+        String range = quotedSheetName(sheetName) + "!A:G";
 
-        sheetsClient.spreadsheets().values()
-                .append(spreadsheetId, quotedSheetName(sheetName) + "!A:G", body)
-                .setValueInputOption(VALUE_INPUT_OPTION)
-                .execute();
+        try {
+            sheetsClient.spreadsheets().values()
+                    .append(spreadsheetId, range, body)
+                    .setValueInputOption(VALUE_INPUT_OPTION)
+                    .execute();
+        } catch (Exception e) {
+            log.error("values.append failed [spreadsheetId={}, range={}]", spreadsheetId, range, e);
+            throw e;
+        }
     }
 
     private String quotedSheetName(String sheetName) {
