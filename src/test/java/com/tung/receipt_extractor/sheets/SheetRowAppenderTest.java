@@ -5,6 +5,7 @@ import com.google.api.services.sheets.v4.model.AppendValuesResponse;
 import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest;
 import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetResponse;
 import com.google.api.services.sheets.v4.model.CellData;
+import com.google.api.services.sheets.v4.model.CopyPasteRequest;
 import com.google.api.services.sheets.v4.model.GridData;
 import com.google.api.services.sheets.v4.model.InsertDimensionRequest;
 import com.google.api.services.sheets.v4.model.Request;
@@ -32,6 +33,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -200,7 +202,158 @@ class SheetRowAppenderTest {
     }
 
     @Test
-    void appendsToEndWhenTodaysDateIsNotFoundInSheet() throws Exception {
+    void insertsMissingDateRowAtEndByCopyingLastDateRowWhenTodayIsAfterAllExistingDates() throws Exception {
+        Sheets sheetsClient = mock(Sheets.class);
+        Sheets.Spreadsheets spreadsheets = mock(Sheets.Spreadsheets.class);
+        Sheets.Spreadsheets.Get get = mock(Sheets.Spreadsheets.Get.class);
+        Sheets.Spreadsheets.Values values = mock(Sheets.Spreadsheets.Values.class);
+        Sheets.Spreadsheets.Values.Update update = mock(Sheets.Spreadsheets.Values.Update.class);
+        Sheets.Spreadsheets.BatchUpdate batchUpdate = mock(Sheets.Spreadsheets.BatchUpdate.class);
+
+        when(sheetsClient.spreadsheets()).thenReturn(spreadsheets);
+        when(spreadsheets.get(SPREADSHEET_ID)).thenReturn(get);
+        when(get.setRanges(any())).thenReturn(get);
+        when(get.setIncludeGridData(true)).thenReturn(get);
+        when(get.setFields(anyString())).thenReturn(get);
+        // rows: 13/12 | 14/12 - today (15/12) is after both, so 14/12 (index 1) is the
+        // template and the new date row lands at the end (index 2).
+        when(get.execute()).thenReturn(spreadsheetWithRows(dateRow("13/12"), dateRow("14/12")));
+        when(spreadsheets.batchUpdate(eq(SPREADSHEET_ID), any(BatchUpdateSpreadsheetRequest.class)))
+                .thenReturn(batchUpdate);
+        when(batchUpdate.execute()).thenReturn(new BatchUpdateSpreadsheetResponse());
+        when(spreadsheets.values()).thenReturn(values);
+        when(values.update(eq(SPREADSHEET_ID), eq(QUOTED_SHEET_NAME + "!A3"), any(ValueRange.class)))
+                .thenReturn(update);
+        when(update.setValueInputOption("USER_ENTERED")).thenReturn(update);
+        when(update.execute()).thenReturn(new UpdateValuesResponse());
+
+        SheetRowAppender appender = new SheetRowAppender(
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+
+        appender.insertRow(50000L, "new date message");
+
+        ArgumentCaptor<BatchUpdateSpreadsheetRequest> batchCaptor =
+                ArgumentCaptor.forClass(BatchUpdateSpreadsheetRequest.class);
+        verify(spreadsheets, times(2))
+                .batchUpdate(eq(SPREADSHEET_ID), batchCaptor.capture());
+        List<BatchUpdateSpreadsheetRequest> batches = batchCaptor.getAllValues();
+
+        // First batch: insert a blank row at index 2, copy 14/12's row (index 1) into it.
+        List<Request> dateRowRequests = batches.get(0).getRequests();
+        InsertDimensionRequest insertDimension = dateRowRequests.get(0).getInsertDimension();
+        assertEquals(2, insertDimension.getRange().getStartIndex());
+        assertEquals(3, insertDimension.getRange().getEndIndex());
+
+        CopyPasteRequest copyPaste = dateRowRequests.get(1).getCopyPaste();
+        assertEquals(1, copyPaste.getSource().getStartRowIndex());
+        assertEquals(2, copyPaste.getSource().getEndRowIndex());
+        assertEquals(2, copyPaste.getDestination().getStartRowIndex());
+        assertEquals(3, copyPaste.getDestination().getEndRowIndex());
+        assertEquals(0, copyPaste.getSource().getStartColumnIndex());
+        assertEquals(7, copyPaste.getSource().getEndColumnIndex());
+        assertEquals("PASTE_NORMAL", copyPaste.getPasteType());
+
+        // Date column of the new row (sheet row 3, 1-based) is set to today.
+        ArgumentCaptor<ValueRange> dateCaptor = ArgumentCaptor.forClass(ValueRange.class);
+        verify(values).update(eq(SPREADSHEET_ID), eq(QUOTED_SHEET_NAME + "!A3"), dateCaptor.capture());
+        assertEquals("15/12", dateCaptor.getValue().getValues().get(0).get(0));
+
+        // Second batch: the actual entry inserted directly below the new date row (index 3).
+        List<Request> entryRequests = batches.get(1).getRequests();
+        InsertDimensionRequest entryInsert = entryRequests.get(0).getInsertDimension();
+        assertEquals(3, entryInsert.getRange().getStartIndex());
+        assertEquals("new date message",
+                entryRequests.get(1).getUpdateCells().getRows().get(0).getValues().get(3)
+                        .getUserEnteredValue().getStringValue());
+    }
+
+    @Test
+    void insertsMissingDateRowBetweenExistingDatesInChronologicalOrder() throws Exception {
+        Sheets sheetsClient = mock(Sheets.class);
+        Sheets.Spreadsheets spreadsheets = mock(Sheets.Spreadsheets.class);
+        Sheets.Spreadsheets.Get get = mock(Sheets.Spreadsheets.Get.class);
+        Sheets.Spreadsheets.Values values = mock(Sheets.Spreadsheets.Values.class);
+        Sheets.Spreadsheets.Values.Update update = mock(Sheets.Spreadsheets.Values.Update.class);
+        Sheets.Spreadsheets.BatchUpdate batchUpdate = mock(Sheets.Spreadsheets.BatchUpdate.class);
+
+        when(sheetsClient.spreadsheets()).thenReturn(spreadsheets);
+        when(spreadsheets.get(SPREADSHEET_ID)).thenReturn(get);
+        when(get.setRanges(any())).thenReturn(get);
+        when(get.setIncludeGridData(true)).thenReturn(get);
+        when(get.setFields(anyString())).thenReturn(get);
+        // rows: 14/12 | 16/12 - today (15/12) sits between them.
+        when(get.execute()).thenReturn(spreadsheetWithRows(dateRow("14/12"), dateRow("16/12")));
+        when(spreadsheets.batchUpdate(eq(SPREADSHEET_ID), any(BatchUpdateSpreadsheetRequest.class)))
+                .thenReturn(batchUpdate);
+        when(batchUpdate.execute()).thenReturn(new BatchUpdateSpreadsheetResponse());
+        when(spreadsheets.values()).thenReturn(values);
+        when(values.update(eq(SPREADSHEET_ID), anyString(), any(ValueRange.class))).thenReturn(update);
+        when(update.setValueInputOption("USER_ENTERED")).thenReturn(update);
+        when(update.execute()).thenReturn(new UpdateValuesResponse());
+
+        SheetRowAppender appender = new SheetRowAppender(
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+
+        appender.insertRow(50000L, "between message");
+
+        ArgumentCaptor<BatchUpdateSpreadsheetRequest> batchCaptor =
+                ArgumentCaptor.forClass(BatchUpdateSpreadsheetRequest.class);
+        verify(spreadsheets, times(2))
+                .batchUpdate(eq(SPREADSHEET_ID), batchCaptor.capture());
+
+        List<Request> dateRowRequests = batchCaptor.getAllValues().get(0).getRequests();
+        // New date row inserted at index 1 (right before "16/12"), copying "14/12" (index 0).
+        assertEquals(1, dateRowRequests.get(0).getInsertDimension().getRange().getStartIndex());
+        CopyPasteRequest copyPaste = dateRowRequests.get(1).getCopyPaste();
+        assertEquals(0, copyPaste.getSource().getStartRowIndex());
+        assertEquals(1, copyPaste.getDestination().getStartRowIndex());
+    }
+
+    @Test
+    void insertsMissingDateRowBeforeAllExistingDatesWhenTodayIsEarliest() throws Exception {
+        Sheets sheetsClient = mock(Sheets.class);
+        Sheets.Spreadsheets spreadsheets = mock(Sheets.Spreadsheets.class);
+        Sheets.Spreadsheets.Get get = mock(Sheets.Spreadsheets.Get.class);
+        Sheets.Spreadsheets.Values values = mock(Sheets.Spreadsheets.Values.class);
+        Sheets.Spreadsheets.Values.Update update = mock(Sheets.Spreadsheets.Values.Update.class);
+        Sheets.Spreadsheets.BatchUpdate batchUpdate = mock(Sheets.Spreadsheets.BatchUpdate.class);
+
+        when(sheetsClient.spreadsheets()).thenReturn(spreadsheets);
+        when(spreadsheets.get(SPREADSHEET_ID)).thenReturn(get);
+        when(get.setRanges(any())).thenReturn(get);
+        when(get.setIncludeGridData(true)).thenReturn(get);
+        when(get.setFields(anyString())).thenReturn(get);
+        // rows: 16/12 | 17/12 - today (15/12) is earlier than both.
+        when(get.execute()).thenReturn(spreadsheetWithRows(dateRow("16/12"), dateRow("17/12")));
+        when(spreadsheets.batchUpdate(eq(SPREADSHEET_ID), any(BatchUpdateSpreadsheetRequest.class)))
+                .thenReturn(batchUpdate);
+        when(batchUpdate.execute()).thenReturn(new BatchUpdateSpreadsheetResponse());
+        when(spreadsheets.values()).thenReturn(values);
+        when(values.update(eq(SPREADSHEET_ID), anyString(), any(ValueRange.class))).thenReturn(update);
+        when(update.setValueInputOption("USER_ENTERED")).thenReturn(update);
+        when(update.execute()).thenReturn(new UpdateValuesResponse());
+
+        SheetRowAppender appender = new SheetRowAppender(
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+
+        appender.insertRow(50000L, "earliest message");
+
+        ArgumentCaptor<BatchUpdateSpreadsheetRequest> batchCaptor =
+                ArgumentCaptor.forClass(BatchUpdateSpreadsheetRequest.class);
+        verify(spreadsheets, times(2))
+                .batchUpdate(eq(SPREADSHEET_ID), batchCaptor.capture());
+
+        List<Request> dateRowRequests = batchCaptor.getAllValues().get(0).getRequests();
+        // New row inserted at index 0 (before "16/12"); the template ("16/12", originally
+        // at index 0 too) has shifted down to index 1 by the time it's copied from.
+        assertEquals(0, dateRowRequests.get(0).getInsertDimension().getRange().getStartIndex());
+        CopyPasteRequest copyPaste = dateRowRequests.get(1).getCopyPaste();
+        assertEquals(1, copyPaste.getSource().getStartRowIndex());
+        assertEquals(0, copyPaste.getDestination().getStartRowIndex());
+    }
+
+    @Test
+    void appendsPlainRowWhenNoDateRowExistsToUseAsTemplate() throws Exception {
         Sheets sheetsClient = mock(Sheets.class);
         Sheets.Spreadsheets spreadsheets = mock(Sheets.Spreadsheets.class);
         Sheets.Spreadsheets.Get get = mock(Sheets.Spreadsheets.Get.class);
@@ -212,7 +365,8 @@ class SheetRowAppenderTest {
         when(get.setRanges(any())).thenReturn(get);
         when(get.setIncludeGridData(true)).thenReturn(get);
         when(get.setFields(anyString())).thenReturn(get);
-        when(get.execute()).thenReturn(spreadsheetWithRows(dateRow("1/11"), dateRow("2/11")));
+        // No row in the sheet has any date text at all.
+        when(get.execute()).thenReturn(spreadsheetWithRows(blankRow(), blankRow()));
         when(spreadsheets.values()).thenReturn(values);
         when(values.append(eq(SPREADSHEET_ID), eq(QUOTED_SHEET_NAME + "!A:G"), any(ValueRange.class)))
                 .thenReturn(append);

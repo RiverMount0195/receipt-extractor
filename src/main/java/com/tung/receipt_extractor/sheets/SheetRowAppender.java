@@ -5,10 +5,12 @@ import com.google.api.services.sheets.v4.model.AppendValuesResponse;
 import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest;
 import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetResponse;
 import com.google.api.services.sheets.v4.model.CellData;
+import com.google.api.services.sheets.v4.model.CopyPasteRequest;
 import com.google.api.services.sheets.v4.model.DimensionRange;
 import com.google.api.services.sheets.v4.model.ExtendedValue;
 import com.google.api.services.sheets.v4.model.GridCoordinate;
 import com.google.api.services.sheets.v4.model.GridData;
+import com.google.api.services.sheets.v4.model.GridRange;
 import com.google.api.services.sheets.v4.model.InsertDimensionRequest;
 import com.google.api.services.sheets.v4.model.Request;
 import com.google.api.services.sheets.v4.model.RowData;
@@ -24,8 +26,10 @@ import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
+import java.time.MonthDay;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -34,9 +38,10 @@ import java.util.Objects;
 @RegisterReflectionForBinding({
         ValueRange.class, AppendValuesResponse.class, UpdateValuesResponse.class,
         Spreadsheet.class, Sheet.class, SheetProperties.class, GridData.class, RowData.class,
-        CellData.class, ExtendedValue.class, GridCoordinate.class,
+        CellData.class, ExtendedValue.class, GridCoordinate.class, GridRange.class,
         BatchUpdateSpreadsheetRequest.class, BatchUpdateSpreadsheetResponse.class,
-        Request.class, InsertDimensionRequest.class, DimensionRange.class, UpdateCellsRequest.class
+        Request.class, InsertDimensionRequest.class, DimensionRange.class, UpdateCellsRequest.class,
+        CopyPasteRequest.class
 })
 public class SheetRowAppender {
 
@@ -48,6 +53,8 @@ public class SheetRowAppender {
     private static final String ROWS_DIMENSION = "ROWS";
     private static final String USER_ENTERED_VALUE_FIELD = "userEnteredValue";
     private static final String ROW_FIELDS_MASK = "sheets(properties(sheetId),data(rowData(values(formattedValue))))";
+    private static final String COPY_PASTE_NORMAL = "PASTE_NORMAL";
+    private static final int TRANSACTION_COLUMN_COUNT = 7; // A-G
 
     private final Sheets sheetsClient;
     private final SheetsProperties sheetsProperties;
@@ -70,9 +77,7 @@ public class SheetRowAppender {
             if (dateRowIndex >= 0) {
                 writeUnderDateRow(spreadsheetId, sheetName, snapshot, dateRowIndex, amount, message);
             } else {
-                log.warn("Date {} not found in sheet [spreadsheetId={}, sheetName={}]; appending to end",
-                        today, spreadsheetId, sheetName);
-                appendToEnd(spreadsheetId, sheetName, amount, message);
+                insertMissingDateRowThenEntry(spreadsheetId, sheetName, snapshot, today, amount, message);
             }
         } catch (Exception e) {
             log.error("Failed to insert row into Google Sheet [spreadsheetId={}, sheetName={}]",
@@ -112,6 +117,113 @@ public class SheetRowAppender {
             }
         }
         return -1;
+    }
+
+    private record DateRow(int rowIndex, MonthDay date) {
+    }
+
+    private List<DateRow> findDateRows(List<RowData> rowData) {
+        List<DateRow> dateRows = new ArrayList<>();
+        for (int i = 0; i < rowData.size(); i++) {
+            List<CellData> values = rowData.get(i).getValues();
+            if (values == null || values.isEmpty()) {
+                continue;
+            }
+            String text = values.get(0).getFormattedValue();
+            if (text == null || text.isEmpty()) {
+                continue;
+            }
+            try {
+                dateRows.add(new DateRow(i, MonthDay.parse(text, DATE_COLUMN_FORMATTER)));
+            } catch (DateTimeParseException e) {
+                // Not a date row (e.g. an entry row); ignore.
+            }
+        }
+        return dateRows;
+    }
+
+    /**
+     * When today's date has no row at all, create one by copying the format and values of
+     * the closest existing earlier date row (or the first date row, if today is earlier
+     * than every existing date), keeping chronological order, then set its date column to
+     * today. The actual entry is then inserted as a fresh row directly below it.
+     */
+    private void insertMissingDateRowThenEntry(String spreadsheetId, String sheetName, SheetSnapshot snapshot,
+            String today, Long amount, String message) throws Exception {
+        List<RowData> rowData = snapshot.rowData();
+        List<DateRow> dateRows = findDateRows(rowData);
+
+        if (dateRows.isEmpty()) {
+            log.warn("No existing date row in sheet [spreadsheetId={}, sheetName={}] to copy as a template; "
+                    + "appending plain row", spreadsheetId, sheetName);
+            appendToEnd(spreadsheetId, sheetName, amount, message);
+            return;
+        }
+
+        MonthDay todayMonthDay = MonthDay.parse(today, DATE_COLUMN_FORMATTER);
+        int templateRowIndex = dateRows.get(0).rowIndex();
+        int insertionIndex = rowData.size();
+        for (DateRow dateRow : dateRows) {
+            if (dateRow.date().isBefore(todayMonthDay)) {
+                templateRowIndex = dateRow.rowIndex();
+            } else {
+                insertionIndex = dateRow.rowIndex();
+                break;
+            }
+        }
+
+        insertDateRowByCopyingTemplate(spreadsheetId, snapshot.sheetId(), templateRowIndex, insertionIndex);
+        writeDateColumn(spreadsheetId, sheetName, insertionIndex, today);
+        insertRowAt(spreadsheetId, snapshot.sheetId(), insertionIndex + 1, amount, message);
+    }
+
+    private void insertDateRowByCopyingTemplate(String spreadsheetId, int sheetId, int templateRowIndex,
+            int insertionIndex) throws Exception {
+        DimensionRange insertRange = new DimensionRange()
+                .setSheetId(sheetId)
+                .setDimension(ROWS_DIMENSION)
+                .setStartIndex(insertionIndex)
+                .setEndIndex(insertionIndex + 1);
+        Request insertRequest = new Request().setInsertDimension(
+                new InsertDimensionRequest().setRange(insertRange).setInheritFromBefore(true));
+
+        // The insert above shifts rows at/after insertionIndex down by one; account for
+        // that when the template row sits at or after the insertion point (i.e. today is
+        // earlier than every existing date, so the template is the first date row, which
+        // is also the insertion point).
+        int adjustedTemplateRowIndex = templateRowIndex >= insertionIndex ? templateRowIndex + 1 : templateRowIndex;
+
+        GridRange source = new GridRange()
+                .setSheetId(sheetId)
+                .setStartRowIndex(adjustedTemplateRowIndex)
+                .setEndRowIndex(adjustedTemplateRowIndex + 1)
+                .setStartColumnIndex(0)
+                .setEndColumnIndex(TRANSACTION_COLUMN_COUNT);
+        GridRange destination = new GridRange()
+                .setSheetId(sheetId)
+                .setStartRowIndex(insertionIndex)
+                .setEndRowIndex(insertionIndex + 1)
+                .setStartColumnIndex(0)
+                .setEndColumnIndex(TRANSACTION_COLUMN_COUNT);
+        Request copyRequest = new Request().setCopyPaste(
+                new CopyPasteRequest().setSource(source).setDestination(destination).setPasteType(COPY_PASTE_NORMAL));
+
+        BatchUpdateSpreadsheetRequest body = new BatchUpdateSpreadsheetRequest()
+                .setRequests(List.of(insertRequest, copyRequest));
+
+        sheetsClient.spreadsheets().batchUpdate(spreadsheetId, body).execute();
+    }
+
+    private void writeDateColumn(String spreadsheetId, String sheetName, int rowIndex, String dateText)
+            throws Exception {
+        int sheetRowNumber = rowIndex + 1; // A1 notation is 1-based
+        String range = quotedSheetName(sheetName) + "!A" + sheetRowNumber;
+        ValueRange body = new ValueRange().setValues(List.of(List.of(dateText)));
+
+        sheetsClient.spreadsheets().values()
+                .update(spreadsheetId, range, body)
+                .setValueInputOption(VALUE_INPUT_OPTION)
+                .execute();
     }
 
     /**
