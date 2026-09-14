@@ -16,7 +16,6 @@ import com.google.api.services.sheets.v4.model.Sheet;
 import com.google.api.services.sheets.v4.model.SheetProperties;
 import com.google.api.services.sheets.v4.model.Spreadsheet;
 import com.google.api.services.sheets.v4.model.UpdateCellsRequest;
-import com.google.api.services.sheets.v4.model.UpdateValuesResponse;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +31,7 @@ import java.util.Objects;
 
 @Service
 @RegisterReflectionForBinding({
-        ValueRange.class, AppendValuesResponse.class, UpdateValuesResponse.class,
+        ValueRange.class, AppendValuesResponse.class,
         Spreadsheet.class, Sheet.class, SheetProperties.class, GridData.class, RowData.class,
         CellData.class, ExtendedValue.class, GridCoordinate.class,
         BatchUpdateSpreadsheetRequest.class, BatchUpdateSpreadsheetResponse.class,
@@ -47,6 +46,7 @@ public class SheetRowAppender {
     private static final String INCOME_OUTCOME = "Chi";
     private static final String ROWS_DIMENSION = "ROWS";
     private static final String USER_ENTERED_VALUE_FIELD = "userEnteredValue";
+    private static final String COLUMN_A_FIELDS_MASK = "sheets(properties(sheetId),data(rowData(values(formattedValue))))";
 
     private final Sheets sheetsClient;
     private final SheetsProperties sheetsProperties;
@@ -87,6 +87,7 @@ public class SheetRowAppender {
                 .get(spreadsheetId)
                 .setRanges(List.of(quotedSheetName(sheetName) + "!A:A"))
                 .setIncludeGridData(true)
+                .setFields(COLUMN_A_FIELDS_MASK)
                 .execute();
 
         Sheet sheet = spreadsheet.getSheets().get(0);

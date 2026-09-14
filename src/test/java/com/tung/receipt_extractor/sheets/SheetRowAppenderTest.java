@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -55,6 +56,7 @@ class SheetRowAppenderTest {
         when(spreadsheets.get(SPREADSHEET_ID)).thenReturn(get);
         when(get.setRanges(List.of(QUOTED_SHEET_NAME + "!A:A"))).thenReturn(get);
         when(get.setIncludeGridData(true)).thenReturn(get);
+        when(get.setFields(anyString())).thenReturn(get);
         when(get.execute()).thenReturn(spreadsheetWithDateRows("13/12", "14/12", "15/12", "16/12"));
         when(spreadsheets.batchUpdate(eq(SPREADSHEET_ID), any(BatchUpdateSpreadsheetRequest.class)))
                 .thenReturn(batchUpdate);
@@ -84,6 +86,7 @@ class SheetRowAppenderTest {
         assertEquals(SHEET_ID, updateCells.getStart().getSheetId());
         assertEquals(3, updateCells.getStart().getRowIndex());
         assertEquals(0, updateCells.getStart().getColumnIndex());
+        assertEquals("userEnteredValue", updateCells.getFields());
 
         List<CellData> cells = updateCells.getRows().get(0).getValues();
         assertEquals(7, cells.size());
@@ -97,6 +100,41 @@ class SheetRowAppenderTest {
     }
 
     @Test
+    void secondSameDayInsertStillLandsDirectlyBelowDateRow() throws Exception {
+        Sheets sheetsClient = mock(Sheets.class);
+        Sheets.Spreadsheets spreadsheets = mock(Sheets.Spreadsheets.class);
+        Sheets.Spreadsheets.Get get = mock(Sheets.Spreadsheets.Get.class);
+        Sheets.Spreadsheets.BatchUpdate batchUpdate = mock(Sheets.Spreadsheets.BatchUpdate.class);
+
+        when(sheetsClient.spreadsheets()).thenReturn(spreadsheets);
+        when(spreadsheets.get(SPREADSHEET_ID)).thenReturn(get);
+        when(get.setRanges(any())).thenReturn(get);
+        when(get.setIncludeGridData(true)).thenReturn(get);
+        when(get.setFields(anyString())).thenReturn(get);
+        // A row for an earlier entry already sits directly below the "15/12" date row.
+        when(get.execute()).thenReturn(spreadsheetWithDateRows("14/12", "15/12", "", "16/12"));
+        when(spreadsheets.batchUpdate(eq(SPREADSHEET_ID), any(BatchUpdateSpreadsheetRequest.class)))
+                .thenReturn(batchUpdate);
+        when(batchUpdate.execute()).thenReturn(new BatchUpdateSpreadsheetResponse());
+
+        SheetRowAppender appender = new SheetRowAppender(
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+
+        appender.insertRow(20000L, "second entry today");
+
+        ArgumentCaptor<BatchUpdateSpreadsheetRequest> captor =
+                ArgumentCaptor.forClass(BatchUpdateSpreadsheetRequest.class);
+        verify(spreadsheets).batchUpdate(eq(SPREADSHEET_ID), captor.capture());
+
+        // "15/12" is at index 1, so the new row must land at index 2 regardless of the
+        // already-inserted row already sitting there (same-day entries always insert
+        // immediately below the date row, landing newest-first).
+        InsertDimensionRequest insertDimension = captor.getValue().getRequests().get(0).getInsertDimension();
+        assertEquals(2, insertDimension.getRange().getStartIndex());
+        assertEquals(3, insertDimension.getRange().getEndIndex());
+    }
+
+    @Test
     void leavesAmountCellBlankWhenAmountIsNull() throws Exception {
         Sheets sheetsClient = mock(Sheets.class);
         Sheets.Spreadsheets spreadsheets = mock(Sheets.Spreadsheets.class);
@@ -107,6 +145,7 @@ class SheetRowAppenderTest {
         when(spreadsheets.get(SPREADSHEET_ID)).thenReturn(get);
         when(get.setRanges(any())).thenReturn(get);
         when(get.setIncludeGridData(true)).thenReturn(get);
+        when(get.setFields(anyString())).thenReturn(get);
         when(get.execute()).thenReturn(spreadsheetWithDateRows("15/12"));
         when(spreadsheets.batchUpdate(eq(SPREADSHEET_ID), any(BatchUpdateSpreadsheetRequest.class)))
                 .thenReturn(batchUpdate);
@@ -137,6 +176,7 @@ class SheetRowAppenderTest {
         when(spreadsheets.get(SPREADSHEET_ID)).thenReturn(get);
         when(get.setRanges(any())).thenReturn(get);
         when(get.setIncludeGridData(true)).thenReturn(get);
+        when(get.setFields(anyString())).thenReturn(get);
         when(get.execute()).thenReturn(spreadsheetWithDateRows("1/11", "2/11"));
         when(spreadsheets.values()).thenReturn(values);
         when(values.append(eq(SPREADSHEET_ID), eq(QUOTED_SHEET_NAME + "!A:G"), any(ValueRange.class)))
@@ -165,6 +205,61 @@ class SheetRowAppenderTest {
     }
 
     @Test
+    void appendsToEndWhenSheetHasNoGridData() throws Exception {
+        Sheets sheetsClient = mock(Sheets.class);
+        Sheets.Spreadsheets spreadsheets = mock(Sheets.Spreadsheets.class);
+        Sheets.Spreadsheets.Get get = mock(Sheets.Spreadsheets.Get.class);
+        Sheets.Spreadsheets.Values values = mock(Sheets.Spreadsheets.Values.class);
+        Sheets.Spreadsheets.Values.Append append = mock(Sheets.Spreadsheets.Values.Append.class);
+
+        Sheet sheetWithNoData = new Sheet().setProperties(new SheetProperties().setSheetId(SHEET_ID));
+
+        when(sheetsClient.spreadsheets()).thenReturn(spreadsheets);
+        when(spreadsheets.get(SPREADSHEET_ID)).thenReturn(get);
+        when(get.setRanges(any())).thenReturn(get);
+        when(get.setIncludeGridData(true)).thenReturn(get);
+        when(get.setFields(anyString())).thenReturn(get);
+        when(get.execute()).thenReturn(new Spreadsheet().setSheets(List.of(sheetWithNoData)));
+        when(spreadsheets.values()).thenReturn(values);
+        when(values.append(eq(SPREADSHEET_ID), eq(QUOTED_SHEET_NAME + "!A:G"), any(ValueRange.class)))
+                .thenReturn(append);
+        when(append.setValueInputOption("USER_ENTERED")).thenReturn(append);
+        when(append.execute()).thenReturn(new AppendValuesResponse());
+
+        SheetRowAppender appender = new SheetRowAppender(
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID, SHEET_NAME), FIXED_CLOCK);
+
+        appender.insertRow(1000L, "message");
+
+        verify(values).append(eq(SPREADSHEET_ID), eq(QUOTED_SHEET_NAME + "!A:G"), any(ValueRange.class));
+        verify(spreadsheets, never()).batchUpdate(anyString(), any());
+    }
+
+    @Test
+    void escapesEmbeddedSingleQuoteInSheetName() throws Exception {
+        String sheetNameWithQuote = "O'Brien's Sheet";
+        String quotedRange = "'O''Brien''s Sheet'!A:A";
+
+        Sheets sheetsClient = mock(Sheets.class);
+        Sheets.Spreadsheets spreadsheets = mock(Sheets.Spreadsheets.class);
+        Sheets.Spreadsheets.Get get = mock(Sheets.Spreadsheets.Get.class);
+
+        when(sheetsClient.spreadsheets()).thenReturn(spreadsheets);
+        when(spreadsheets.get(SPREADSHEET_ID)).thenReturn(get);
+        when(get.setRanges(List.of(quotedRange))).thenReturn(get);
+        when(get.setIncludeGridData(true)).thenReturn(get);
+        when(get.setFields(anyString())).thenReturn(get);
+        when(get.execute()).thenReturn(spreadsheetWithDateRows("1/11"));
+
+        SheetRowAppender appender = new SheetRowAppender(
+                sheetsClient, new SheetsProperties(SPREADSHEET_ID, sheetNameWithQuote), FIXED_CLOCK);
+
+        appender.insertRow(1000L, "message");
+
+        verify(get).setRanges(List.of(quotedRange));
+    }
+
+    @Test
     void swallowsExceptionFromSheetsApiCall() throws Exception {
         Sheets sheetsClient = mock(Sheets.class);
         Sheets.Spreadsheets spreadsheets = mock(Sheets.Spreadsheets.class);
@@ -179,7 +274,7 @@ class SheetRowAppenderTest {
     }
 
     private Spreadsheet spreadsheetWithDateRows(String... dates) {
-        List<RowData> rows = new java.util.ArrayList<>();
+        List<RowData> rows = new ArrayList<>();
         for (String date : dates) {
             rows.add(new RowData().setValues(List.of(new CellData().setFormattedValue(date))));
         }
