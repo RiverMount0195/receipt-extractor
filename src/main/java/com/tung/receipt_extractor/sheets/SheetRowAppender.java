@@ -1,6 +1,8 @@
 package com.tung.receipt_extractor.sheets;
 
 import com.google.api.services.sheets.v4.Sheets;
+import com.google.api.services.sheets.v4.model.AppendValuesResponse;
+import com.google.api.services.sheets.v4.model.UpdateValuesResponse;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +16,7 @@ import java.util.List;
 import java.util.Objects;
 
 @Service
-@RegisterReflectionForBinding(ValueRange.class)
+@RegisterReflectionForBinding({ValueRange.class, AppendValuesResponse.class, UpdateValuesResponse.class})
 public class SheetRowAppender {
 
     private static final Logger log = LoggerFactory.getLogger(SheetRowAppender.class);
