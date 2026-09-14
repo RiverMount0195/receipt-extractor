@@ -96,7 +96,7 @@ class TelegramWebhookControllerTest {
                 .andExpect(status().isOk());
 
         verify(telegramClient).getFilePath("large-id");
-        verify(sheetRowAppender).appendRow("Techcombank", 50000L, "override message");
+        verify(sheetRowAppender).insertRow(50000L, "override message");
         verify(telegramClient).sendMessage(eq(ALLOWED_CHAT_ID), contains("override message"));
     }
 
@@ -125,7 +125,7 @@ class TelegramWebhookControllerTest {
                         .content(payload))
                 .andExpect(status().isOk());
 
-        verify(sheetRowAppender).appendRow("Techcombank", 50000L, "extracted message");
+        verify(sheetRowAppender).insertRow(50000L, "extracted message");
     }
 
     @Test
@@ -148,7 +148,7 @@ class TelegramWebhookControllerTest {
 
         verify(telegramClient).sendMessage(ALLOWED_CHAT_ID, "Please send a photo of your receipt.");
         verify(receiptExtractionService, never()).extract(any());
-        verify(sheetRowAppender, never()).appendRow(any(), any(), any());
+        verify(sheetRowAppender, never()).insertRow(any(), any());
     }
 
     @Test
@@ -239,7 +239,7 @@ class TelegramWebhookControllerTest {
                 .andExpect(status().isOk());
 
         verify(telegramClient).sendMessage(ALLOWED_CHAT_ID, "Sorry, couldn't process that image. Please try again.");
-        verify(sheetRowAppender, never()).appendRow(any(), any(), any());
+        verify(sheetRowAppender, never()).insertRow(any(), any());
     }
 
     @Test
@@ -335,7 +335,7 @@ class TelegramWebhookControllerTest {
                 .andExpect(status().isOk());
 
         verify(telegramClient).sendMessage(ALLOWED_CHAT_ID, "Sorry, couldn't process that image. Please try again.");
-        verify(sheetRowAppender, never()).appendRow(any(), any(), any());
+        verify(sheetRowAppender, never()).insertRow(any(), any());
     }
 
     @Test

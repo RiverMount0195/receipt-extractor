@@ -42,7 +42,7 @@ public class OcrController {
         try {
             OcrResponse response = receiptExtractionService.extract(file.getBytes());
             try {
-                sheetRowAppender.appendRow(response.bankSource(), response.amount(), response.message());
+                sheetRowAppender.insertRow(response.amount(), response.message());
             } catch (Exception e) {
                 log.error("Sheets append failed; returning OCR response anyway", e);
             }

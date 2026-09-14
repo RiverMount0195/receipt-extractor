@@ -56,14 +56,14 @@ class OcrControllerTest {
         mockMvc.perform(multipart("/api/ocr/extract").file(file))
                 .andExpect(status().isOk());
 
-        verify(sheetRowAppender).appendRow("Techcombank", 50000L, "NGUYEN VAN A chuyen tien");
+        verify(sheetRowAppender).insertRow(50000L, "NGUYEN VAN A chuyen tien");
     }
 
     @Test
     void returns200EvenWhenSheetRowAppenderThrows() throws Exception {
         when(receiptExtractionService.extract(any())).thenReturn(
                 new OcrResponse("Giao dịch thành công!\nVND 2,000", "Zalopay", 2000L, ""));
-        doThrow(new RuntimeException("boom")).when(sheetRowAppender).appendRow(any(), any(), any());
+        doThrow(new RuntimeException("boom")).when(sheetRowAppender).insertRow(any(), any());
 
         MockMultipartFile file = new MockMultipartFile(
                 "file", "receipt.png", "image/png", "fake-image-bytes".getBytes());
