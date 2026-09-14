@@ -16,6 +16,7 @@ import com.google.api.services.sheets.v4.model.Sheet;
 import com.google.api.services.sheets.v4.model.SheetProperties;
 import com.google.api.services.sheets.v4.model.Spreadsheet;
 import com.google.api.services.sheets.v4.model.UpdateCellsRequest;
+import com.google.api.services.sheets.v4.model.UpdateValuesResponse;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +32,7 @@ import java.util.Objects;
 
 @Service
 @RegisterReflectionForBinding({
-        ValueRange.class, AppendValuesResponse.class,
+        ValueRange.class, AppendValuesResponse.class, UpdateValuesResponse.class,
         Spreadsheet.class, Sheet.class, SheetProperties.class, GridData.class, RowData.class,
         CellData.class, ExtendedValue.class, GridCoordinate.class,
         BatchUpdateSpreadsheetRequest.class, BatchUpdateSpreadsheetResponse.class,
@@ -46,7 +47,7 @@ public class SheetRowAppender {
     private static final String INCOME_OUTCOME = "Chi";
     private static final String ROWS_DIMENSION = "ROWS";
     private static final String USER_ENTERED_VALUE_FIELD = "userEnteredValue";
-    private static final String COLUMN_A_FIELDS_MASK = "sheets(properties(sheetId),data(rowData(values(formattedValue))))";
+    private static final String ROW_FIELDS_MASK = "sheets(properties(sheetId),data(rowData(values(formattedValue))))";
 
     private final Sheets sheetsClient;
     private final SheetsProperties sheetsProperties;
@@ -63,11 +64,11 @@ public class SheetRowAppender {
         String sheetName = sheetsProperties.sheetName();
         try {
             String today = ZonedDateTime.now(clock).format(DATE_COLUMN_FORMATTER);
-            SheetSnapshot snapshot = fetchColumnAData(spreadsheetId, sheetName);
+            SheetSnapshot snapshot = fetchRowData(spreadsheetId, sheetName);
             int dateRowIndex = findDateRowIndex(snapshot.rowData(), today);
 
             if (dateRowIndex >= 0) {
-                insertBelowRow(spreadsheetId, snapshot.sheetId(), dateRowIndex, amount, message);
+                writeUnderDateRow(spreadsheetId, sheetName, snapshot, dateRowIndex, amount, message);
             } else {
                 log.warn("Date {} not found in sheet [spreadsheetId={}, sheetName={}]; appending to end",
                         today, spreadsheetId, sheetName);
@@ -82,12 +83,12 @@ public class SheetRowAppender {
     private record SheetSnapshot(int sheetId, List<RowData> rowData) {
     }
 
-    private SheetSnapshot fetchColumnAData(String spreadsheetId, String sheetName) throws Exception {
+    private SheetSnapshot fetchRowData(String spreadsheetId, String sheetName) throws Exception {
         Spreadsheet spreadsheet = sheetsClient.spreadsheets()
                 .get(spreadsheetId)
-                .setRanges(List.of(quotedSheetName(sheetName) + "!A:A"))
+                .setRanges(List.of(quotedSheetName(sheetName) + "!A:G"))
                 .setIncludeGridData(true)
-                .setFields(COLUMN_A_FIELDS_MASK)
+                .setFields(ROW_FIELDS_MASK)
                 .execute();
 
         Sheet sheet = spreadsheet.getSheets().get(0);
@@ -113,10 +114,43 @@ public class SheetRowAppender {
         return -1;
     }
 
-    private void insertBelowRow(String spreadsheetId, int sheetId, int dateRowIndex, Long amount, String message)
-            throws Exception {
-        int insertIndex = dateRowIndex + 1;
+    /**
+     * Each date row is followed by a template spacer row reserved for that day's entries.
+     * Reuse it in place while it's blank; once it holds an entry, subsequent same-day
+     * entries insert directly below the last one, so entries stack chronologically under
+     * the date.
+     */
+    private void writeUnderDateRow(String spreadsheetId, String sheetName, SheetSnapshot snapshot,
+            int dateRowIndex, Long amount, String message) throws Exception {
+        int belowIndex = dateRowIndex + 1;
+        List<RowData> rowData = snapshot.rowData();
+        RowData belowRow = belowIndex < rowData.size() ? rowData.get(belowIndex) : null;
 
+        if (belowRow == null) {
+            insertRowAt(spreadsheetId, snapshot.sheetId(), belowIndex, amount, message);
+        } else if (isRowEmpty(belowRow)) {
+            updateRowInPlace(spreadsheetId, sheetName, belowIndex, amount, message);
+        } else {
+            insertRowAt(spreadsheetId, snapshot.sheetId(), belowIndex + 1, amount, message);
+        }
+    }
+
+    private boolean isRowEmpty(RowData row) {
+        List<CellData> values = row.getValues();
+        if (values == null || values.isEmpty()) {
+            return true;
+        }
+        for (CellData cell : values) {
+            String text = cell.getFormattedValue();
+            if (text != null && !text.isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void insertRowAt(String spreadsheetId, int sheetId, int insertIndex, Long amount, String message)
+            throws Exception {
         DimensionRange range = new DimensionRange()
                 .setSheetId(sheetId)
                 .setDimension(ROWS_DIMENSION)
@@ -138,6 +172,18 @@ public class SheetRowAppender {
         sheetsClient.spreadsheets().batchUpdate(spreadsheetId, body).execute();
     }
 
+    private void updateRowInPlace(String spreadsheetId, String sheetName, int rowIndex, Long amount, String message)
+            throws Exception {
+        int sheetRowNumber = rowIndex + 1; // A1 notation is 1-based
+        String range = quotedSheetName(sheetName) + "!D" + sheetRowNumber + ":G" + sheetRowNumber;
+        ValueRange body = new ValueRange().setValues(List.of(transactionColumns(amount, message)));
+
+        sheetsClient.spreadsheets().values()
+                .update(spreadsheetId, range, body)
+                .setValueInputOption(VALUE_INPUT_OPTION)
+                .execute();
+    }
+
     private RowData buildRowData(Long amount, String message) {
         List<CellData> cells = new ArrayList<>();
         cells.add(new CellData()); // A: date (left blank)
@@ -150,6 +196,15 @@ public class SheetRowAppender {
         return new RowData().setValues(cells);
     }
 
+    private List<Object> transactionColumns(Long amount, String message) {
+        Object amountValue = amount == null ? "" : -amount;
+        return List.of(
+                Objects.requireNonNullElse(message, ""),
+                PAYMENT_METHOD,
+                INCOME_OUTCOME,
+                amountValue);
+    }
+
     private CellData stringCell(String value) {
         return new CellData().setUserEnteredValue(new ExtendedValue().setStringValue(value));
     }
@@ -159,13 +214,11 @@ public class SheetRowAppender {
     }
 
     private void appendToEnd(String spreadsheetId, String sheetName, Long amount, String message) throws Exception {
-        Object amountValue = amount == null ? "" : -amount;
-        List<Object> row = List.of(
-                "", "", "",
-                Objects.requireNonNullElse(message, ""),
-                PAYMENT_METHOD,
-                INCOME_OUTCOME,
-                amountValue);
+        List<Object> row = new ArrayList<>();
+        row.add("");
+        row.add("");
+        row.add("");
+        row.addAll(transactionColumns(amount, message));
         ValueRange body = new ValueRange().setValues(List.of(row));
 
         sheetsClient.spreadsheets().values()
