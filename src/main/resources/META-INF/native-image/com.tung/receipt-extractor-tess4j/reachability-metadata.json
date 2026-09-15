@@ -361,6 +361,12 @@
           "parameterTypes": [
             "java.lang.String"
           ]
+        },
+        {
+          "name": "setAuthorization",
+          "parameterTypes": [
+            "java.util.List"
+          ]
         }
       ]
     },
@@ -377,7 +383,13 @@
       "type": "com.google.api.client.json.GenericJson"
     },
     {
-      "type": "com.google.api.client.util.GenericData"
+      "type": "com.google.api.client.util.GenericData",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
     },
     {
       "type": "com.google.api.services.sheets.v4.Sheets"
@@ -447,7 +459,18 @@
       ]
     },
     {
-      "type": "com.google.api.services.sheets.v4.model.ValueRange"
+      "type": "com.google.api.services.sheets.v4.model.ValueRange",
+      "fields": [
+        {
+          "name": "majorDimension"
+        },
+        {
+          "name": "range"
+        },
+        {
+          "name": "values"
+        }
+      ]
     },
     {
       "type": "com.google.auth.http.HttpCredentialsAdapter"
@@ -1199,6 +1222,14 @@
             "com.google.api.services.sheets.v4.Sheets",
             "com.tung.receipt_extractor.sheets.SheetsProperties"
           ]
+        },
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "com.google.api.services.sheets.v4.Sheets",
+            "com.tung.receipt_extractor.sheets.SheetsProperties",
+            "java.time.Clock"
+          ]
         }
       ]
     },
@@ -1217,6 +1248,16 @@
           "name": "sheetsProperties",
           "parameterTypes": [
             "java.lang.String",
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "clock",
+          "parameterTypes": []
+        },
+        {
+          "name": "sheetsProperties",
+          "parameterTypes": [
             "java.lang.String"
           ]
         }
@@ -5978,6 +6019,732 @@
           ]
         }
       }
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.Sheets$Spreadsheets$BatchUpdate",
+      "fields": [
+        {
+          "name": "spreadsheetId"
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.Sheets$Spreadsheets$Get",
+      "fields": [
+        {
+          "name": "excludeTablesInBandedRanges"
+        },
+        {
+          "name": "includeGridData"
+        },
+        {
+          "name": "ranges"
+        },
+        {
+          "name": "spreadsheetId"
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.AppendValuesResponse"
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.BandedRange",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest",
+      "fields": [
+        {
+          "name": "includeSpreadsheetInResponse"
+        },
+        {
+          "name": "requests"
+        },
+        {
+          "name": "responseIncludeGridData"
+        },
+        {
+          "name": "responseRanges"
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetResponse",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setReplies",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        },
+        {
+          "name": "setSpreadsheetId",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.CellData",
+      "fields": [
+        {
+          "name": "chipRuns"
+        },
+        {
+          "name": "dataSourceFormula"
+        },
+        {
+          "name": "dataSourceTable"
+        },
+        {
+          "name": "dataValidation"
+        },
+        {
+          "name": "effectiveFormat"
+        },
+        {
+          "name": "effectiveValue"
+        },
+        {
+          "name": "formattedValue"
+        },
+        {
+          "name": "hyperlink"
+        },
+        {
+          "name": "note"
+        },
+        {
+          "name": "pivotTable"
+        },
+        {
+          "name": "textFormatRuns"
+        },
+        {
+          "name": "userEnteredFormat"
+        },
+        {
+          "name": "userEnteredValue"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setFormattedValue",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.ConditionalFormatRule",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.CopyPasteRequest"
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.DataSource",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.DataSourceRefreshSchedule",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.DeveloperMetadata",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.DimensionGroup",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.DimensionProperties",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.DimensionRange",
+      "fields": [
+        {
+          "name": "dimension"
+        },
+        {
+          "name": "endIndex"
+        },
+        {
+          "name": "sheetId"
+        },
+        {
+          "name": "startIndex"
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.EmbeddedChart",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.ExtendedValue",
+      "fields": [
+        {
+          "name": "boolValue"
+        },
+        {
+          "name": "errorValue"
+        },
+        {
+          "name": "formulaValue"
+        },
+        {
+          "name": "numberValue"
+        },
+        {
+          "name": "stringValue"
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.FilterCriteria",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.FilterSpec",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.FilterView",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.GridCoordinate",
+      "fields": [
+        {
+          "name": "columnIndex"
+        },
+        {
+          "name": "rowIndex"
+        },
+        {
+          "name": "sheetId"
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.GridData",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setRowData",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.GridRange",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.InsertDimensionRequest",
+      "fields": [
+        {
+          "name": "inheritFromBefore"
+        },
+        {
+          "name": "range"
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.NamedRange",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.ProtectedRange",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.Request",
+      "fields": [
+        {
+          "name": "addBanding"
+        },
+        {
+          "name": "addChart"
+        },
+        {
+          "name": "addConditionalFormatRule"
+        },
+        {
+          "name": "addDataSource"
+        },
+        {
+          "name": "addDimensionGroup"
+        },
+        {
+          "name": "addFilterView"
+        },
+        {
+          "name": "addNamedRange"
+        },
+        {
+          "name": "addProtectedRange"
+        },
+        {
+          "name": "addSheet"
+        },
+        {
+          "name": "addSlicer"
+        },
+        {
+          "name": "addTable"
+        },
+        {
+          "name": "appendCells"
+        },
+        {
+          "name": "appendDimension"
+        },
+        {
+          "name": "autoFill"
+        },
+        {
+          "name": "autoResizeDimensions"
+        },
+        {
+          "name": "cancelDataSourceRefresh"
+        },
+        {
+          "name": "clearBasicFilter"
+        },
+        {
+          "name": "copyPaste"
+        },
+        {
+          "name": "createDeveloperMetadata"
+        },
+        {
+          "name": "cutPaste"
+        },
+        {
+          "name": "deleteBanding"
+        },
+        {
+          "name": "deleteConditionalFormatRule"
+        },
+        {
+          "name": "deleteDataSource"
+        },
+        {
+          "name": "deleteDeveloperMetadata"
+        },
+        {
+          "name": "deleteDimension"
+        },
+        {
+          "name": "deleteDimensionGroup"
+        },
+        {
+          "name": "deleteDuplicates"
+        },
+        {
+          "name": "deleteEmbeddedObject"
+        },
+        {
+          "name": "deleteFilterView"
+        },
+        {
+          "name": "deleteNamedRange"
+        },
+        {
+          "name": "deleteProtectedRange"
+        },
+        {
+          "name": "deleteRange"
+        },
+        {
+          "name": "deleteSheet"
+        },
+        {
+          "name": "deleteTable"
+        },
+        {
+          "name": "duplicateFilterView"
+        },
+        {
+          "name": "duplicateSheet"
+        },
+        {
+          "name": "findReplace"
+        },
+        {
+          "name": "insertDimension"
+        },
+        {
+          "name": "insertRange"
+        },
+        {
+          "name": "mergeCells"
+        },
+        {
+          "name": "moveDimension"
+        },
+        {
+          "name": "pasteData"
+        },
+        {
+          "name": "randomizeRange"
+        },
+        {
+          "name": "refreshDataSource"
+        },
+        {
+          "name": "repeatCell"
+        },
+        {
+          "name": "setBasicFilter"
+        },
+        {
+          "name": "setDataValidation"
+        },
+        {
+          "name": "sortRange"
+        },
+        {
+          "name": "textToColumns"
+        },
+        {
+          "name": "trimWhitespace"
+        },
+        {
+          "name": "unmergeCells"
+        },
+        {
+          "name": "updateBanding"
+        },
+        {
+          "name": "updateBorders"
+        },
+        {
+          "name": "updateCells"
+        },
+        {
+          "name": "updateChartSpec"
+        },
+        {
+          "name": "updateConditionalFormatRule"
+        },
+        {
+          "name": "updateDataSource"
+        },
+        {
+          "name": "updateDeveloperMetadata"
+        },
+        {
+          "name": "updateDimensionGroup"
+        },
+        {
+          "name": "updateDimensionProperties"
+        },
+        {
+          "name": "updateEmbeddedObjectBorder"
+        },
+        {
+          "name": "updateEmbeddedObjectPosition"
+        },
+        {
+          "name": "updateFilterView"
+        },
+        {
+          "name": "updateNamedRange"
+        },
+        {
+          "name": "updateProtectedRange"
+        },
+        {
+          "name": "updateSheetProperties"
+        },
+        {
+          "name": "updateSlicerSpec"
+        },
+        {
+          "name": "updateSpreadsheetProperties"
+        },
+        {
+          "name": "updateTable"
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.Response",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.RowData",
+      "fields": [
+        {
+          "name": "values"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setValues",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.Sheet",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setData",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        },
+        {
+          "name": "setProperties",
+          "parameterTypes": [
+            "com.google.api.services.sheets.v4.model.SheetProperties"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.SheetProperties",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setSheetId",
+          "parameterTypes": [
+            "java.lang.Integer"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.Spreadsheet",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setSheets",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.UpdateCellsRequest",
+      "fields": [
+        {
+          "name": "fields"
+        },
+        {
+          "name": "range"
+        },
+        {
+          "name": "rows"
+        },
+        {
+          "name": "start"
+        }
+      ]
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.model.UpdateValuesResponse",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setSpreadsheetId",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setUpdatedCells",
+          "parameterTypes": [
+            "java.lang.Integer"
+          ]
+        },
+        {
+          "name": "setUpdatedColumns",
+          "parameterTypes": [
+            "java.lang.Integer"
+          ]
+        },
+        {
+          "name": "setUpdatedRange",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setUpdatedRows",
+          "parameterTypes": [
+            "java.lang.Integer"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.security.interfaces.RSAPrivateKey"
+    },
+    {
+      "type": "java.security.interfaces.RSAPublicKey"
+    },
+    {
+      "type": "java.time.Clock$SystemClock"
+    },
+    {
+      "type": "sun.security.rsa.RSASignature$SHA256withRSA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.text.resources.FormatData"
+    },
+    {
+      "type": "sun.text.resources.FormatData_en"
+    },
+    {
+      "type": "sun.text.resources.JavaTimeSupplementary"
+    },
+    {
+      "type": "com.google.api.services.sheets.v4.Sheets$Spreadsheets$Values$Update",
+      "fields": [
+        {
+          "name": "includeValuesInResponse"
+        },
+        {
+          "name": "range"
+        },
+        {
+          "name": "responseDateTimeRenderOption"
+        },
+        {
+          "name": "responseValueRenderOption"
+        },
+        {
+          "name": "spreadsheetId"
+        },
+        {
+          "name": "valueInputOption"
+        }
+      ]
     }
   ],
   "resources": [
@@ -6903,6 +7670,12 @@
     },
     {
       "bundle": "sun.awt.resources.awt"
+    },
+    {
+      "glob": "com/tung/receipt_extractor/sheets/SheetRowAppender$DateRow.class"
+    },
+    {
+      "glob": "com/tung/receipt_extractor/sheets/SheetRowAppender$SheetSnapshot.class"
     }
   ]
 }
