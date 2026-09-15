@@ -30,8 +30,10 @@ import java.time.MonthDay;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 @Service
@@ -55,7 +57,6 @@ public class SheetRowAppender {
     private static final String ROW_FIELDS_MASK = "sheets(properties(sheetId),data(rowData(values(formattedValue))))";
     private static final String COPY_PASTE_NORMAL = "PASTE_NORMAL";
     private static final int TRANSACTION_COLUMN_COUNT = 7; // A-G
-    private static final String SHEET_NAME_PREFIX = "Tháng ";
 
     private final Sheets sheetsClient;
     private final SheetsProperties sheetsProperties;
@@ -70,7 +71,7 @@ public class SheetRowAppender {
     public void insertRow(Long amount, String message) {
         String spreadsheetId = sheetsProperties.spreadsheetId();
         ZonedDateTime now = ZonedDateTime.now(clock);
-        String sheetName = SHEET_NAME_PREFIX + now.getMonthValue();
+        String sheetName = now.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
         try {
             String today = now.format(DATE_COLUMN_FORMATTER);
             SheetSnapshot snapshot = fetchRowData(spreadsheetId, sheetName);
