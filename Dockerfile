@@ -1,4 +1,5 @@
 FROM ghcr.io/graalvm/native-image-community:25i3 AS build
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 WORKDIR /app
 COPY gradlew ./
 COPY gradle ./gradle
@@ -7,6 +8,7 @@ COPY src ./src
 RUN ./gradlew nativeCompile --no-daemon
 
 FROM eclipse-temurin:25-jre
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libtesseract-dev libleptonica-dev \
     && rm -rf /var/lib/apt/lists/*
