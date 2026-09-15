@@ -40,7 +40,7 @@ import static org.mockito.Mockito.when;
 class SheetRowAppenderTest {
 
     private static final String SPREADSHEET_ID = "sheet-id-123";
-    private static final String QUOTED_SHEET_NAME = "'Tháng 12'";
+    private static final String QUOTED_SHEET_NAME = "'December'";
     private static final int SHEET_ID = 987;
     // Fixed at 2025-12-15T10:00:00+07:00, i.e. "today" is 15/12
     private static final Clock FIXED_CLOCK = Clock.fixed(
@@ -513,9 +513,9 @@ class SheetRowAppenderTest {
 
         when(sheetsClient.spreadsheets()).thenReturn(spreadsheets);
         when(spreadsheets.get(SPREADSHEET_ID)).thenReturn(get);
-        // FIXED_CLOCK is in December, so the sheet name must be computed as "Tháng 12",
-        // quoted for A1 notation since it contains a space - regardless of whatever
-        // sheet name SheetsProperties happens to carry (no longer used for this).
+        // FIXED_CLOCK is in December, so the sheet name must be computed as "December"
+        // (full English month name) - regardless of whatever sheet name SheetsProperties
+        // happens to carry (no longer used for this).
         when(get.setRanges(List.of(QUOTED_SHEET_NAME + "!A:G"))).thenReturn(get);
         when(get.setIncludeGridData(true)).thenReturn(get);
         when(get.setFields(anyString())).thenReturn(get);
