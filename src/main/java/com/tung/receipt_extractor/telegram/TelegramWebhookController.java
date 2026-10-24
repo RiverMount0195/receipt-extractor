@@ -1,11 +1,10 @@
 package com.tung.receipt_extractor.telegram;
 
-import com.tung.receipt_extractor.ocr.OcrResponse;
-import com.tung.receipt_extractor.ocr.ReceiptExtractionService;
+import com.tung.receipt_extractor.receipt.ReceiptData;
+import com.tung.receipt_extractor.receipt.ReceiptExtractionService;
 import com.tung.receipt_extractor.sheets.SheetRowAppender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 import tools.jackson.databind.ObjectMapper;
 
 @RestController
-@RegisterReflectionForBinding({TelegramUpdate.class, TelegramMessage.class, TelegramChat.class, TelegramPhotoSize.class})
 public class TelegramWebhookController {
 
     private static final Logger log = LoggerFactory.getLogger(TelegramWebhookController.class);
@@ -82,7 +80,7 @@ public class TelegramWebhookController {
             String filePath = telegramClient.getFilePath(largestPhoto.fileId());
             byte[] imageBytes = telegramClient.downloadFile(filePath);
 
-            OcrResponse extracted = receiptExtractionService.extract(imageBytes);
+            ReceiptData extracted = receiptExtractionService.extract(imageBytes, "image/jpeg");
             String finalMessage = message.caption() != null && !message.caption().isBlank()
                     ? message.caption()
                     : extracted.message();

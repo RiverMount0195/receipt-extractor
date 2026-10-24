@@ -1,9 +1,8 @@
 package com.tung.receipt_extractor.telegram;
 
-import com.tung.receipt_extractor.ocr.OcrResponse;
-import com.tung.receipt_extractor.ocr.ReceiptExtractionService;
+import com.tung.receipt_extractor.receipt.ReceiptData;
+import com.tung.receipt_extractor.receipt.ReceiptExtractionService;
 import com.tung.receipt_extractor.sheets.SheetRowAppender;
-import net.sourceforge.tess4j.TesseractException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -72,8 +71,8 @@ class TelegramWebhookControllerTest {
     void photoWithCaptionUsesCaptionAsMessageOverride() throws Exception {
         when(telegramClient.getFilePath("large-id")).thenReturn("photos/file.jpg");
         when(telegramClient.downloadFile("photos/file.jpg")).thenReturn(new byte[]{1, 2, 3});
-        when(receiptExtractionService.extract(any()))
-                .thenReturn(new OcrResponse("raw text", "Techcombank", 50000L, "extracted message"));
+        when(receiptExtractionService.extract(any(), any()))
+                .thenReturn(new ReceiptData("Techcombank", 50000L, "extracted message"));
 
         String payload = """
                 {
@@ -98,14 +97,15 @@ class TelegramWebhookControllerTest {
         verify(telegramClient).getFilePath("large-id");
         verify(sheetRowAppender).insertRow(50000L, "override message");
         verify(telegramClient).sendMessage(eq(ALLOWED_CHAT_ID), contains("override message"));
+        verify(receiptExtractionService).extract(any(), eq("image/jpeg"));
     }
 
     @Test
     void photoWithoutCaptionUsesExtractedMessage() throws Exception {
         when(telegramClient.getFilePath("large-id")).thenReturn("photos/file.jpg");
         when(telegramClient.downloadFile("photos/file.jpg")).thenReturn(new byte[]{1, 2, 3});
-        when(receiptExtractionService.extract(any()))
-                .thenReturn(new OcrResponse("raw text", "Techcombank", 50000L, "extracted message"));
+        when(receiptExtractionService.extract(any(), any()))
+                .thenReturn(new ReceiptData("Techcombank", 50000L, "extracted message"));
 
         String payload = """
                 {
@@ -147,7 +147,7 @@ class TelegramWebhookControllerTest {
                 .andExpect(status().isOk());
 
         verify(telegramClient).sendMessage(ALLOWED_CHAT_ID, "Please send a photo of your receipt.");
-        verify(receiptExtractionService, never()).extract(any());
+        verify(receiptExtractionService, never()).extract(any(), any());
         verify(sheetRowAppender, never()).insertRow(any(), any());
     }
 
@@ -246,8 +246,8 @@ class TelegramWebhookControllerTest {
     void successfulProcessingRepliesWithExactConfirmationText() throws Exception {
         when(telegramClient.getFilePath("large-id")).thenReturn("photos/file.jpg");
         when(telegramClient.downloadFile("photos/file.jpg")).thenReturn(new byte[]{1, 2, 3});
-        when(receiptExtractionService.extract(any()))
-                .thenReturn(new OcrResponse("raw text", "Techcombank", 50000L, "extracted message"));
+        when(receiptExtractionService.extract(any(), any()))
+                .thenReturn(new ReceiptData("Techcombank", 50000L, "extracted message"));
 
         String payload = """
                 {
@@ -275,8 +275,8 @@ class TelegramWebhookControllerTest {
     void successfulProcessingWithAllNullFieldsRepliesWithUnknownPlaceholders() throws Exception {
         when(telegramClient.getFilePath("large-id")).thenReturn("photos/file.jpg");
         when(telegramClient.downloadFile("photos/file.jpg")).thenReturn(new byte[]{1, 2, 3});
-        when(receiptExtractionService.extract(any()))
-                .thenReturn(new OcrResponse("raw text", null, null, null));
+        when(receiptExtractionService.extract(any(), any()))
+                .thenReturn(new ReceiptData(null, null, null));
 
         String payload = """
                 {
@@ -311,10 +311,10 @@ class TelegramWebhookControllerTest {
     }
 
     @Test
-    void tesseractExceptionDuringProcessingRepliesWithGenericErrorAndStillReturns200() throws Exception {
+    void extractionFailureDuringProcessingRepliesWithGenericErrorAndStillReturns200() throws Exception {
         when(telegramClient.getFilePath("large-id")).thenReturn("photos/file.jpg");
         when(telegramClient.downloadFile("photos/file.jpg")).thenReturn(new byte[]{1, 2, 3});
-        when(receiptExtractionService.extract(any())).thenThrow(new TesseractException("boom"));
+        when(receiptExtractionService.extract(any(), any())).thenThrow(new IllegalStateException("boom"));
 
         String payload = """
                 {

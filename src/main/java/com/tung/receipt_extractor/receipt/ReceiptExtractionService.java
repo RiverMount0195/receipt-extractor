@@ -5,7 +5,7 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MimeTypeUtils;
 
-@Service("geminiReceiptExtractionService") // temporary name: the old ocr.ReceiptExtractionService bean still exists until Task 3
+@Service
 public class ReceiptExtractionService {
 
     private static final String USER_PROMPT = "Extract the data from this receipt image.";
