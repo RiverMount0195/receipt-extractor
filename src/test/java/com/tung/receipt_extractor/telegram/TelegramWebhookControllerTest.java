@@ -3,6 +3,7 @@ package com.tung.receipt_extractor.telegram;
 import com.tung.receipt_extractor.receipt.ReceiptData;
 import com.tung.receipt_extractor.receipt.ReceiptExtractionService;
 import com.tung.receipt_extractor.sheets.SheetRowAppender;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -51,6 +52,14 @@ class TelegramWebhookControllerTest {
 
     @MockitoBean
     private SheetRowAppender sheetRowAppender;
+
+    @MockitoBean
+    private ProcessedUpdates processedUpdates;
+
+    @BeforeEach
+    void treatEveryUpdateAsNewByDefault() {
+        when(processedUpdates.markIfNew(anyLong())).thenReturn(true);
+    }
 
     @Test
     void missingOrWrongSecretTokenHeaderReturns401AndDoesNothingElse() throws Exception {
@@ -348,6 +357,31 @@ class TelegramWebhookControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(telegramClient, receiptExtractionService, sheetRowAppender);
+    }
+
+    @Test
+    void duplicateUpdateIsIgnoredWithoutProcessingOrReplying() throws Exception {
+        when(processedUpdates.markIfNew(1L)).thenReturn(false);
+
+        String payload = """
+                {
+                  "update_id": 1,
+                  "message": {
+                    "chat": { "id": 123456789 },
+                    "photo": [
+                      { "file_id": "large-id", "width": 800, "height": 800 }
+                    ]
+                  }
+                }
+                """;
+
+        mockMvc.perform(post("/api/telegram-webhook")
+                        .header(SECRET_HEADER, SECRET_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk());
 
         verifyNoInteractions(telegramClient, receiptExtractionService, sheetRowAppender);
     }

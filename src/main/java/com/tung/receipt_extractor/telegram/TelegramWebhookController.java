@@ -26,18 +26,21 @@ public class TelegramWebhookController {
     private final TelegramClient telegramClient;
     private final ReceiptExtractionService receiptExtractionService;
     private final SheetRowAppender sheetRowAppender;
+    private final ProcessedUpdates processedUpdates;
 
     public TelegramWebhookController(
             ObjectMapper objectMapper,
             TelegramProperties telegramProperties,
             TelegramClient telegramClient,
             ReceiptExtractionService receiptExtractionService,
-            SheetRowAppender sheetRowAppender) {
+            SheetRowAppender sheetRowAppender,
+            ProcessedUpdates processedUpdates) {
         this.objectMapper = objectMapper;
         this.telegramProperties = telegramProperties;
         this.telegramClient = telegramClient;
         this.receiptExtractionService = receiptExtractionService;
         this.sheetRowAppender = sheetRowAppender;
+        this.processedUpdates = processedUpdates;
     }
 
     @PostMapping("/api/telegram-webhook")
@@ -67,6 +70,11 @@ public class TelegramWebhookController {
         long chatId = message.chat().id();
         if (chatId != telegramProperties.allowedChatId()) {
             log.warn("Ignoring Telegram message from non-allow-listed chat id {}", chatId);
+            return ResponseEntity.ok().build();
+        }
+
+        if (!processedUpdates.markIfNew(update.updateId())) {
+            log.info("Ignoring duplicate Telegram update {}", update.updateId());
             return ResponseEntity.ok().build();
         }
 
