@@ -5,13 +5,17 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+  ai:
+    google:
+      genai:
+        api-key: ${GOOGLE_API_KEY}
+        chat:
+          options:
+            model: ${GEMINI_MODEL:gemini-3.8-flash}
+            temperature: 0.1
 
 server:
   port: ${PORT:8080}
-
-ocr:
-  tessdata-path: src/main/resources/tessdata
-  languages: vie+eng
 
 sheets:
   client-id: ${SHEETS_CLIENT_ID}

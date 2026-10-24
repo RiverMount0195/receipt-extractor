@@ -1,7 +1,6 @@
-package com.tung.receipt_extractor.ocr;
+package com.tung.receipt_extractor.receipt;
 
 import com.tung.receipt_extractor.sheets.SheetRowAppender;
-import net.sourceforge.tess4j.TesseractException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -10,6 +9,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -17,8 +17,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(OcrController.class)
-class OcrControllerTest {
+@WebMvcTest(ReceiptController.class)
+class ReceiptControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -30,16 +30,16 @@ class OcrControllerTest {
     private SheetRowAppender sheetRowAppender;
 
     @Test
-    void returnsExtractedResponseForValidImageUpload() throws Exception {
-        when(receiptExtractionService.extract(any())).thenReturn(
-                new OcrResponse("Tổng cộng: 125.000 VND", "Zalopay", 125000L, "chuyen tien"));
+    void returnsExtractedDataForValidImageUpload() throws Exception {
+        when(receiptExtractionService.extract(any(), eq("image/png")))
+                .thenReturn(new ReceiptData("Zalopay", 125000L, "chuyen tien"));
 
         MockMultipartFile file = new MockMultipartFile(
                 "file", "receipt.png", "image/png", "fake-image-bytes".getBytes());
 
         mockMvc.perform(multipart("/api/ocr/extract").file(file))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.text").value("Tổng cộng: 125.000 VND"))
+                .andExpect(jsonPath("$.text").doesNotExist())
                 .andExpect(jsonPath("$.bankSource").value("Zalopay"))
                 .andExpect(jsonPath("$.amount").value(125000))
                 .andExpect(jsonPath("$.message").value("chuyen tien"));
@@ -47,8 +47,8 @@ class OcrControllerTest {
 
     @Test
     void invokesSheetRowAppenderWithExtractedFields() throws Exception {
-        when(receiptExtractionService.extract(any())).thenReturn(
-                new OcrResponse("raw text", "Techcombank", 50000L, "NGUYEN VAN A chuyen tien"));
+        when(receiptExtractionService.extract(any(), any()))
+                .thenReturn(new ReceiptData("Techcombank", 50000L, "NGUYEN VAN A chuyen tien"));
 
         MockMultipartFile file = new MockMultipartFile(
                 "file", "receipt.png", "image/png", "fake-image-bytes".getBytes());
@@ -61,8 +61,8 @@ class OcrControllerTest {
 
     @Test
     void returns200EvenWhenSheetRowAppenderThrows() throws Exception {
-        when(receiptExtractionService.extract(any())).thenReturn(
-                new OcrResponse("Giao dịch thành công!\nVND 2,000", "Zalopay", 2000L, ""));
+        when(receiptExtractionService.extract(any(), any()))
+                .thenReturn(new ReceiptData("Zalopay", 2000L, ""));
         doThrow(new RuntimeException("boom")).when(sheetRowAppender).insertRow(any(), any());
 
         MockMultipartFile file = new MockMultipartFile(
@@ -112,13 +112,13 @@ class OcrControllerTest {
 
     @Test
     void returns500WhenReceiptExtractionServiceThrows() throws Exception {
-        when(receiptExtractionService.extract(any())).thenThrow(new TesseractException("boom"));
+        when(receiptExtractionService.extract(any(), any())).thenThrow(new IllegalStateException("boom"));
 
         MockMultipartFile file = new MockMultipartFile(
                 "file", "receipt.png", "image/png", "fake-image-bytes".getBytes());
 
         mockMvc.perform(multipart("/api/ocr/extract").file(file))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.error").value("failed to extract text from image"));
+                .andExpect(jsonPath("$.error").value("failed to extract data from image"));
     }
 }

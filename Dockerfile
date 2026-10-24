@@ -1,19 +1,14 @@
-FROM ghcr.io/graalvm/native-image-community:25i3 AS build
+FROM eclipse-temurin:25-jdk AS build
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 WORKDIR /app
 COPY gradlew ./
 COPY gradle ./gradle
 COPY build.gradle settings.gradle ./
 COPY src ./src
-RUN ./gradlew nativeCompile --no-daemon
+RUN ./gradlew bootJar --no-daemon -x test
 
 FROM eclipse-temurin:25-jre
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends libtesseract-dev libleptonica-dev \
-    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY --from=build /app/src/main/resources/tessdata /app/tessdata
-ENV OCR_TESSDATA_PATH=/app/tessdata
-COPY --from=build /app/build/native/nativeCompile/ /app/
-ENTRYPOINT ["/app/receipt-extractor"]
+COPY --from=build /app/build/libs/app.jar /app/app.jar
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

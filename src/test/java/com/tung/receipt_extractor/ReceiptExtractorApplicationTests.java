@@ -12,7 +12,8 @@ import org.springframework.test.context.TestPropertySource;
 		"sheets.spreadsheet-id=test-spreadsheet-id",
 		"telegram.bot-token=test-bot-token",
 		"telegram.allowed-chat-id=123456789",
-		"telegram.webhook-secret-token=test-secret"
+		"telegram.webhook-secret-token=test-secret",
+		"spring.ai.google.genai.api-key=test-api-key"
 })
 class ReceiptExtractorApplicationTests {
 

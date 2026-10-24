@@ -1,9 +1,7 @@
 package com.tung.receipt_extractor.sheets;
 
 import com.google.api.services.sheets.v4.Sheets;
-import com.google.api.services.sheets.v4.model.AppendValuesResponse;
 import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest;
-import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetResponse;
 import com.google.api.services.sheets.v4.model.CellData;
 import com.google.api.services.sheets.v4.model.CopyPasteRequest;
 import com.google.api.services.sheets.v4.model.DimensionRange;
@@ -15,14 +13,11 @@ import com.google.api.services.sheets.v4.model.InsertDimensionRequest;
 import com.google.api.services.sheets.v4.model.Request;
 import com.google.api.services.sheets.v4.model.RowData;
 import com.google.api.services.sheets.v4.model.Sheet;
-import com.google.api.services.sheets.v4.model.SheetProperties;
 import com.google.api.services.sheets.v4.model.Spreadsheet;
 import com.google.api.services.sheets.v4.model.UpdateCellsRequest;
-import com.google.api.services.sheets.v4.model.UpdateValuesResponse;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -37,14 +32,6 @@ import java.util.Locale;
 import java.util.Objects;
 
 @Service
-@RegisterReflectionForBinding({
-        ValueRange.class, AppendValuesResponse.class, UpdateValuesResponse.class,
-        Spreadsheet.class, Sheet.class, SheetProperties.class, GridData.class, RowData.class,
-        CellData.class, ExtendedValue.class, GridCoordinate.class, GridRange.class,
-        BatchUpdateSpreadsheetRequest.class, BatchUpdateSpreadsheetResponse.class,
-        Request.class, InsertDimensionRequest.class, DimensionRange.class, UpdateCellsRequest.class,
-        CopyPasteRequest.class
-})
 public class SheetRowAppender {
 
     private static final Logger log = LoggerFactory.getLogger(SheetRowAppender.class);
