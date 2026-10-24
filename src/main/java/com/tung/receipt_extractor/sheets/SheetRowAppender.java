@@ -22,7 +22,6 @@ import com.google.api.services.sheets.v4.model.UpdateValuesResponse;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -37,14 +36,6 @@ import java.util.Locale;
 import java.util.Objects;
 
 @Service
-@RegisterReflectionForBinding({
-        ValueRange.class, AppendValuesResponse.class, UpdateValuesResponse.class,
-        Spreadsheet.class, Sheet.class, SheetProperties.class, GridData.class, RowData.class,
-        CellData.class, ExtendedValue.class, GridCoordinate.class, GridRange.class,
-        BatchUpdateSpreadsheetRequest.class, BatchUpdateSpreadsheetResponse.class,
-        Request.class, InsertDimensionRequest.class, DimensionRange.class, UpdateCellsRequest.class,
-        CopyPasteRequest.class
-})
 public class SheetRowAppender {
 
     private static final Logger log = LoggerFactory.getLogger(SheetRowAppender.class);

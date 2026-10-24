@@ -2,7 +2,6 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.1.1'
 	id 'io.spring.dependency-management' version '1.1.7'
-	id 'org.graalvm.buildtools.native' version '1.1.11'
 }
 
 group = 'com.tung'
@@ -39,4 +38,8 @@ tasks.named('test') {
 
 tasks.withType(JavaCompile).configureEach {
 	options.encoding = 'UTF-8'
+}
+
+tasks.named('bootJar') {
+	archiveFileName = 'app.jar'
 }
