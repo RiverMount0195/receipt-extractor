@@ -91,4 +91,4 @@ The Cloud Run deployment procedure no longer needs a larger Cloud Build machine 
 
 ## Privacy note
 
-Receipt images contain personal financial data and are now sent to Google's Gemini API. This is a deliberate change from fully local OCR. The Cloud Run `--no-allow-unauthenticated` posture is unaffected.
+Receipt images contain personal financial data and are now sent to Google's Gemini API. This is a deliberate change from fully local OCR. The Cloud Run `--no-allow-unauthenticated` posture is unaffected. On Google AI Studio's free (unpaid) tier Google may use prompts and responses to improve its products, so use an API key from a billing-enabled project for real receipts.

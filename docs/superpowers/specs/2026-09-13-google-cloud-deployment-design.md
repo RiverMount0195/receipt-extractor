@@ -12,7 +12,7 @@ The receipt-extractor app currently only runs locally via `./gradlew bootRun`. T
 
 Two prerequisites already in place:
 - Receipt extraction calls Google's Gemini API (Spring AI), so the container needs no native libraries or bundled model files — only the `GOOGLE_API_KEY` environment variable.
-- Google Sheets credentials are read from 5 environment variables (`SHEETS_CLIENT_ID`, `SHEETS_CLIENT_SECRET`, `SHEETS_REFRESH_TOKEN`, `SHEETS_SPREADSHEET_ID`, `SHEETS_SHEET_NAME`) rather than a file, as of the preceding change in this repo — this determines how secrets are wired into the cloud environment (see "Secrets" below).
+- Google Sheets credentials are read from 4 environment variables (`SHEETS_CLIENT_ID`, `SHEETS_CLIENT_SECRET`, `SHEETS_REFRESH_TOKEN`, `SHEETS_SPREADSHEET_ID`) rather than a file, as of the preceding change in this repo — this determines how secrets are wired into the cloud environment (see "Secrets" below).
 
 ## Goals
 

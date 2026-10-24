@@ -28,7 +28,7 @@ Use the Gradle wrapper (`./gradlew`), not a system-installed Gradle.
 
 - Endpoint: `POST /api/ocr/extract` — multipart file upload, field name `file`, accepts `image/jpeg` or `image/png`. Returns `{"bankSource": ..., "amount": ..., "message": ...}` on success.
 - Extraction is done by `ReceiptExtractionService` in package `com.tung.receipt_extractor.receipt`, using a Spring AI `ChatClient` with the Google GenAI starter.
-- Config: `spring.ai.google.genai.api-key` bound from `GOOGLE_API_KEY` (the app fails to start if unset; tests use a dummy value) and the model from `GEMINI_MODEL` (default `gemini-2.5-flash`). Receipt images are sent to Google's Gemini API.
+- Config: `spring.ai.google.genai.api-key` bound from `GOOGLE_API_KEY` (the app fails to start if unset; tests use a dummy value) and the model from `GEMINI_MODEL` (default `gemini-2.5-flash`). Receipt images are sent to Google's Gemini API. On Google AI Studio's free (unpaid) tier Google may use prompts and responses to improve its products, so use an API key from a billing-enabled project for real receipts.
 
 ## Google Sheets export
 
